@@ -13,6 +13,7 @@ export default function App(){
  return <AppProvider apiKey={apiKey}>
   <nav className="ad-topnav" aria-label="AdMorph navigation">
    <Link to="/app">Overview</Link>
+   <Link to="/app/autopilot">Autopilot</Link>
    <Link to="/app/meta">Meta Ads</Link>
    <Link to="/app/campaigns">AI Campaigns</Link>
   </nav>

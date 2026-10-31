@@ -33,6 +33,7 @@ model Shop {
   meta MetaConnection?
   ads MetaAd[]
   campaigns Campaign[]
+  automation AutomationSetting?
 }
 model MetaOauthState {
   nonce String @id
@@ -78,4 +79,13 @@ model Campaign {
   owner Shop @relation(fields:[shop],references:[domain],onDelete:Cascade)
   @@unique([shop,metaAdId,productId])
   @@index([shop,status])
+}
+
+model AutomationSetting {
+  shop String @id
+  autoPublish Boolean @default(false)
+  lastSyncAt DateTime?
+  lastResult Json?
+  updatedAt DateTime @updatedAt
+  owner Shop @relation(fields:[shop],references:[domain],onDelete:Cascade)
 }
