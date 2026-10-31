@@ -280,298 +280,292 @@ export const action=async({request}:ActionFunctionArgs)=>{
  }
 };
 
-type Filter="all"|"review"|"published"|"generate";
+
+type CampaignTab="all"|"live"|"review";
 export default function Campaigns(){
- const d=useLoaderData<typeof loader>(),a=useActionData<typeof action>();
+ const d=useLoaderData<typeof loader>();
+ const action=useActionData<typeof action>();
  const catalog=useFetcher<typeof action>();
- const visual=useFetcher<typeof action>();
- const backdrop=useFetcher<typeof action>();
- const products=(catalog.data && "products" in catalog.data && Array.isArray(catalog.data.products)) ? catalog.data.products : [];
- const [filter,setFilter]=useState<Filter>("all");
+ const productPreview=useFetcher<typeof action>();
+ const artwork=useFetcher<typeof action>();
+ const [selectedId,setSelectedId]=useState<string|null>(null);
  const [search,setSearch]=useState("");
- const [selected,setSelected]=useState<string[]>([]);
- const [expanded,setExpanded]=useState<string|null>(null);
- const [manualAdId,setManualAdId]=useState("");
- const adInventory=useMemo(()=>groupByImportedAd(d.ads,d.campaigns).map(ad=>({
-   ...ad,hasAI:ad.linked.some(c=>hasValidCampaignContent(selectPreviewContent(c)))
- })),[d.ads,d.campaigns]);
- const unmatchedAds=adInventory.filter(ad=>!ad.linked.length);
- function openExperience(id:string){
-   setExpanded(id);
-   setFilter("all");
-   setSearch("");
-   visual.submit({intent:"preview_product",id},{method:"post"});
-   backdrop.submit({intent:"preview_backdrop",id},{method:"post"});
-   document.getElementById("campaign-library")?.scrollIntoView({behavior:"smooth",block:"start"});
+ const [tab,setTab]=useState<CampaignTab>("all");
+ const [mappingAd,setMappingAd]=useState("");
+ const [selectedBulk,setSelectedBulk]=useState<string[]>([]);
+ const products=(catalog.data&&"products" in catalog.data&&Array.isArray(catalog.data.products))?catalog.data.products:[];
+ const selected=d.campaigns.find(c=>c.id===selectedId);
+ const selectedAI=campaignContentSchema.safeParse(selected?selectPreviewContent(selected):null);
+ const liveAI=campaignContentSchema.safeParse(selected?.content);
+ const originalAd=selected?d.ads.find(a=>a.id===selected.metaAdId):undefined;
+ const otherAds=useMemo(()=>groupByImportedAd(d.ads,d.campaigns).filter(a=>a.linked.length===0),[d.ads,d.campaigns]);
+ const liveCount=d.campaigns.filter(c=>c.status==="PUBLISHED").length;
+ const reviewCount=d.campaigns.filter(c=>(c.status!=="PUBLISHED"||Boolean(c.draftContent))&&hasValidCampaignContent(selectPreviewContent(c))).length;
+ const cards=useMemo(()=>d.campaigns.filter(c=>{
+   const text=(c.productTitle+" "+c.metaAdId+" "+(d.ads.find(a=>a.id===c.metaAdId)?.name||"")).toLowerCase();
+   const matches=text.includes(search.trim().toLowerCase());
+   if(tab==="live"&&c.status!=="PUBLISHED")return false;
+   if(tab==="review"&&(c.status==="PUBLISHED"&&!c.draftContent))return false;
+   return matches;
+ }),[d.campaigns,d.ads,search,tab]);
+ const linkedImage=productPreview.data&&"campaignId" in productPreview.data&&productPreview.data.campaignId===selectedId&&
+   "productVisual" in productPreview.data?productPreview.data.productVisual?.url:undefined;
+ const artworkData=artwork.data&&"campaignId" in artwork.data&&artwork.data.campaignId===selectedId?artwork.data:null;
+ const report=selected?d.experimentResults[selected.id]:undefined;
+ const experimentOn=Boolean(selected&&d.experiments.find(e=>e.campaignId===selected.id)?.enabled);
+ function openCampaign(id:string){
+   if(selectedId===id){setSelectedId(null);return;}
+   setSelectedId(id);
+   productPreview.submit({intent:"preview_product",id},{method:"post"});
+   artwork.submit({intent:"preview_backdrop",id},{method:"post"});
  }
- function chooseAdForMapping(adId:string){
-   setManualAdId(adId);
-   document.getElementById("manual-ad-match")?.scrollIntoView({behavior:"smooth",block:"start"});
+ function selectBulk(id:string,checked:boolean){
+  setSelectedBulk(prev=>checked?[...new Set([...prev,id])]:prev.filter(x=>x!==id));
  }
- const draft=d.campaigns.filter(c=>(c.status==="DRAFT"||Boolean(c.draftContent))&&hasValidCampaignContent(selectPreviewContent(c))).length;
- const published=d.campaigns.filter(c=>c.status==="PUBLISHED").length;
- const pending=d.campaigns.filter(c=>!hasValidCampaignContent(selectPreviewContent(c))).length;
- const visible=useMemo(()=>d.campaigns.filter(c=>{
-    const valid=hasValidCampaignContent(selectPreviewContent(c));
-    if(filter==="review"&&!(c.status==="DRAFT"&&valid||c.draftContent&&valid))return false;
-    if(filter==="published"&&c.status!=="PUBLISHED")return false;
-    if(filter==="generate"&&valid)return false;
-    const ad=d.ads.find(a=>a.id===c.metaAdId);
-    return (c.productTitle+" "+(ad?.name||"")+" "+c.metaAdId).toLowerCase().includes(search.trim().toLowerCase());
- }),[d.campaigns,d.ads,filter,search]);
- const selectedVisible=visible.map(c=>c.id).filter(id=>selected.includes(id));
- const allVisible=visible.length>0&&selectedVisible.length===visible.length;
- function toggle(id:string,checked:boolean){setSelected(prev=>checked?[...new Set([...prev,id])]:prev.filter(x=>x!==id));}
- function confirmDelete(e:React.FormEvent<HTMLFormElement>){
-   const clicked=(e.nativeEvent as SubmitEvent).submitter as HTMLButtonElement|null;
-   if(clicked?.value==="bulk_delete" && !window.confirm("Delete selected campaigns permanently? This cannot be undone."))e.preventDefault();
+ function confirmBulk(event:React.FormEvent<HTMLFormElement>){
+   const clicked=(event.nativeEvent as SubmitEvent).submitter as HTMLButtonElement|null;
+   if(clicked?.value==="bulk_delete"&&!window.confirm("Permanently delete selected campaigns?"))event.preventDefault();
  }
- return <s-page heading="AI campaigns">
-   <s-button slot="primary-action" href="/app/autopilot" variant="primary">Run AI Autopilot</s-button>
-   <div className="am-container">
-    <PageIntro eyebrow="CONTENT STUDIO" title="Review and publish your AI experiences"
-      description="See every imported Meta ad, inspect its AI-generated experience, and review any ads that still need product matching."/>
-    {a&&<s-banner tone={a.ok?"success":"critical"}>{a.message}</s-banner>}
-    {unmatchedAds.length>0&&<s-banner tone="info">{unmatchedAds.length} imported Meta ads do not yet have an associated Shopify product. Their AI previews cannot exist until you match a product and generate content. See All Meta Ads below.</s-banner>}
-    <div className="am-stats am-stats-three">
-      <Stat label="Matched campaigns" value={d.campaigns.length} note="Linked Shopify products"/>
-      <Stat label="Needs product matching" value={unmatchedAds.length} note="Imported ads without campaign"/>
-      <Stat label="Published experiences" value={published} note="Available on the matched product" tone="success"/>
-    </div>
-    <s-section>
-      <SectionHead title="Conversion tracking setup"/>
-      <p className="ad-muted">A/B measurement requires the AdMorph Shopify Web Pixel to be released with read_customer_events and write_pixels permissions, then connected once per store. Tracking respects Shopify Customer Privacy settings.</p>
-      <Form method="post"><input type="hidden" name="intent" value="activate_pixel"/>
-        <button className="ad-btn ghost" type="submit">Connect Shopify Web Pixel</button>
-      </Form>
-    </s-section>
-    <div id="campaign-library"/>
-    <s-section>
-      <SectionHead title="Campaign library" action={<State text={pending+" need AI copy"} kind={pending?"warning":"success"}/>}/>
-      {d.campaigns.length===0 ? <Empty title="No AI campaigns yet" description="Connect Meta and run Autopilot to create your first personalized draft." href="/app/autopilot" label="Go to Autopilot"/> : <>
-        <div className="am-table-toolbar">
-          <label className="am-search-label" htmlFor="campaignSearch">Search campaigns
-            <input id="campaignSearch" className="ad-input" placeholder="Search ad or product" value={search} onChange={e=>setSearch(e.target.value)}/>
-          </label>
-          <label className="am-filter-label" htmlFor="campaignFilter">Status
-            <select id="campaignFilter" className="ad-input" value={filter} onChange={e=>setFilter(e.target.value as Filter)}>
-              <option value="all">All campaigns</option>
-              <option value="review">Ready for review</option>
-              <option value="published">Published</option>
-              <option value="generate">Needs AI content</option>
-            </select>
-          </label>
-        </div>
-        <Form method="post" onSubmit={confirmDelete}>
-         <div className="am-bulk-bar">
-          <strong>{selected.length} selected</strong>
-          <button type="submit" name="intent" value="bulk_publish" className="ad-btn ghost" disabled={!selected.length}>Publish</button>
-          <button type="submit" name="intent" value="bulk_unpublish" className="ad-btn ghost" disabled={!selected.length}>Unpublish</button>
-          <button type="submit" name="intent" value="bulk_delete" className="ad-btn am-danger" disabled={!selected.length}>Delete</button>
-          <input type="hidden" name="confirmDelete" value="yes"/>
-          {selected.map(id=><input type="hidden" name="ids" key={id} value={id}/>)}
+ const publicLink=selected?"https://"+d.shop+"/products/"+encodeURIComponent(selected.productHandle)+"?admorph_ad="+encodeURIComponent(selected.metaAdId):"";
+ return <s-page heading="AI Campaigns">
+   <s-button slot="primary-action" href="/app/autopilot" variant="primary">Import Meta ads</s-button>
+   <div className="am-container am-simple-workspace">
+     <PageIntro eyebrow="ADMORPH CONTENT STUDIO" title="Your AI product pages"
+       description="Choose a Meta ad, see the page AI prepared, and publish it when you are happy with it."/>
+     {action&&<s-banner tone={action.ok?"success":"critical"}>{action.message}</s-banner>}
+     <div className="am-simple-steps" aria-label="How AdMorph works">
+       <div><span>1</span><strong>Connect an ad</strong><small>Find its Shopify product</small></div>
+       <div><span>2</span><strong>AI builds the page</strong><small>Preview the result</small></div>
+       <div><span>3</span><strong>You approve</strong><small>Only then does it go live</small></div>
+     </div>
+     <div className="am-simple-summary">
+       <div><strong>{d.campaigns.length}</strong><span>Matched product campaigns</span></div>
+       <div><strong>{liveCount}</strong><span>Published on your store</span></div>
+       <div><strong>{reviewCount}</strong><span>Waiting for your review</span></div>
+     </div>
+     <s-section>
+       <div className="am-simple-section-heading">
+         <div><span className="am-simple-step-label">STEP 1</span><h2>Choose a campaign</h2>
+         <p>Each card connects one Meta advertisement to a Shopify product.</p></div>
+       </div>
+       <div className="am-simple-controls">
+         <input className="ad-input" aria-label="Search campaigns" placeholder="Search ad or Shopify product..." value={search} onChange={e=>setSearch(e.target.value)}/>
+         <div className="am-simple-filters">
+           {([{id:"all",label:"All"},{id:"live",label:"Published"},{id:"review",label:"Needs review"}] as const).map(item=>
+             <button key={item.id} type="button" aria-pressed={tab===item.id} className={tab===item.id?"active":""} onClick={()=>setTab(item.id)}>{item.label}</button>)}
          </div>
+       </div>
+       {d.campaigns.length===0?<Empty title="No product campaigns yet" description="Import Meta ads and connect each relevant ad to its Shopify product." href="/app/autopilot" label="Import Meta ads"/>:
+        <div className="am-simple-cards">
+         {cards.map(c=>{
+           const copy=hasValidCampaignContent(selectPreviewContent(c));
+           const ad=d.ads.find(a=>a.id===c.metaAdId);
+           const state=c.draftContent?"Review update":c.status==="PUBLISHED"?"Published":copy?"Ready to review":"Generate AI page";
+           return <button type="button" key={c.id} onClick={()=>openCampaign(c.id)} aria-expanded={selectedId===c.id}
+             className={"am-simple-campaign-card"+(selectedId===c.id?" selected":"")}>
+             <div className="am-simple-card-main">
+               <small>Meta ad: {ad?.name||c.metaAdId}</small>
+               <strong>{c.productTitle}</strong>
+               <span>{copy?"AI page created":"AI page not created yet"}</span>
+             </div>
+             <div className="am-simple-card-side">
+               <State text={state} kind={c.draftContent||c.status!=="PUBLISHED"?"warning":"success"}/>
+               <span className="am-simple-view">{selectedId===c.id?"Close preview":"See AI page"}</span>
+             </div>
+            </button>;
+         })}
+         {!cards.length&&<p className="ad-muted">No campaigns match this filter. Select All to see everything.</p>}
+        </div>}
+     </s-section>
+     {selected&&<s-section>
+       <div className="am-simple-section-heading">
+         <div><span className="am-simple-step-label">STEP 2</span><h2>{selectedAI.success?"See what AI created":"Create the AI page"}</h2>
+           <p>{selected.productTitle} · {originalAd?.name||"Meta ad "+selected.metaAdId}</p></div>
+         <button className="am-simple-close" type="button" onClick={()=>setSelectedId(null)}>Close</button>
+       </div>
+       {selected.draftContent?<div className="am-simple-notice">
+        <strong>New version ready for review.</strong>
+        <span>Your existing published page stays unchanged until you approve this update.</span>
+       </div>:selected.status==="PUBLISHED"?<div className="am-simple-notice live">
+        <strong>This AI page is published.</strong>
+        <span>Visitors see it when arriving through the matching Meta ad URL.</span>
+       </div>:<div className="am-simple-notice">
+        <strong>{selectedAI.success?"This AI page is not live yet.":"No AI page exists yet."}</strong>
+        <span>{selectedAI.success?"Review it below, then publish.":"Use the button below to generate the first version."}</span>
+       </div>}
+       <div className="am-simple-primary-actions">
+         <Form method="post"><input type="hidden" name="intent" value="generate"/><input type="hidden" name="id" value={selected.id}/>
+           <button className={selectedAI.success?"ad-btn ghost":"ad-btn"} type="submit">
+             {selectedAI.success?"Regenerate AI page":"Generate AI page"}
+           </button>
+         </Form>
+         {selectedAI.success&&(selected.status!=="PUBLISHED"||Boolean(selected.draftContent))&&
+          <Form method="post"><input type="hidden" name="intent" value="publish"/><input type="hidden" name="id" value={selected.id}/>
+           <button className="ad-btn" type="submit">Approve & publish</button>
+          </Form>}
+         {selected.status==="PUBLISHED"&&<a href={publicLink} target="_blank" rel="noopener noreferrer" className="ad-btn ghost">
+          View live Shopify page
+         </a>}
+       </div>
+       {selectedAI.success&&isExperience(selectedAI.data)&&<>
+         <p className="am-simple-preview-label">PREVIEW — WHAT THE VISITOR WILL SEE</p>
+         <ExperiencePreview content={selectedAI.data} productImageUrl={linkedImage} productImageAlt={selected.productTitle}/>
+         <p className="am-simple-caption">The preview uses the real Shopify product image. AI artwork, if approved, is an additional decorative background.</p>
+       </>}
+       {selectedAI.success&&!isExperience(selectedAI.data)&&<div className="ad-preview">
+          <h3>{selectedAI.data.headline}</h3><p>{selectedAI.data.subheadline}</p>
+          <ul>{selectedAI.data.benefits.map((benefit,i)=><li key={i}>{benefit}</li>)}</ul>
+          <small>Shopping button text: {selectedAI.data.cta}</small>
+       </div>}
+       {selected.draftContent&&liveAI.success&&<details className="am-simple-accordion">
+        <summary>Compare with the version currently published</summary>
+        <div className="am-simple-accordion-body">
+         {isExperience(liveAI.data)?<ExperiencePreview content={liveAI.data} productImageUrl={linkedImage} productImageAlt={selected.productTitle}/>:
+          <div className="ad-preview"><h3>{liveAI.data.headline}</h3><p>{liveAI.data.subheadline}</p>
+           <ul>{liveAI.data.benefits.map((x,i)=><li key={i}>{x}</li>)}</ul></div>}
+        </div>
+       </details>}
+       {selectedAI.success&&<details className="am-simple-accordion">
+        <summary>Edit text, colors and design (optional)</summary>
+        <div className="am-simple-accordion-body">
+         <p className="ad-muted">These controls are optional. Your changes are saved as a draft and do not immediately replace the live page.</p>
+         {isExperience(selectedAI.data)?<ExperienceEditor id={selected.id} content={selectedAI.data}/>:
+          <Form method="post" className="am-edit-fields">
+           <input type="hidden" name="intent" value="save"/><input type="hidden" name="id" value={selected.id}/>
+           <label>Headline<input className="ad-input" name="headline" required defaultValue={selectedAI.data.headline}/></label>
+           <label>Subheadline<textarea className="ad-input" name="subheadline" required defaultValue={selectedAI.data.subheadline}/></label>
+           {selectedAI.data.benefits.map((x,i)=><label key={i}>Benefit {i+1}
+             <input name={"benefit"+(i+1)} className="ad-input" required defaultValue={x}/></label>)}
+           <label>Button text<input className="ad-input" name="cta" required defaultValue={selectedAI.data.cta}/></label>
+           <button className="ad-btn" type="submit">Save draft</button>
+          </Form>}
+        </div>
+       </details>}
+       {selectedAI.success&&isExperience(selectedAI.data)&&<details className="am-simple-accordion">
+        <summary>AI visuals and background images (optional)</summary>
+        <div className="am-simple-accordion-body">
+         <p className="ad-muted">The default page already uses Shopify product photography. You can ask AI to suggest new colors or generate an optional decorative background; neither goes live without your approval.</p>
+         <div className="am-simple-primary-actions">
+          <Form method="post"><input type="hidden" name="intent" value="generate_visual"/><input type="hidden" name="id" value={selected.id}/>
+           <button type="submit" className="ad-btn ghost">AI suggest a new design</button></Form>
+          <Form method="post"><input type="hidden" name="intent" value="generate_backdrop"/><input type="hidden" name="id" value={selected.id}/>
+           <button type="submit" className="ad-btn ghost">Generate decorative AI image</button></Form>
+          <artwork.Form method="post"><input type="hidden" name="intent" value="preview_backdrop"/><input type="hidden" name="id" value={selected.id}/>
+           <button type="submit" className="ad-btn ghost" disabled={artwork.state!=="idle"}>Refresh image preview</button></artwork.Form>
+         </div>
+         {artworkData&&"draftImage" in artworkData&&artworkData.draftImage&&<div className="am-simple-art">
+            <img src={artworkData.draftImage} alt="AI-generated decorative background waiting for approval"/>
+            <strong>Draft image — not published</strong>
+           </div>}
+         {artworkData&&"publishedImage" in artworkData&&artworkData.publishedImage&&<div className="am-simple-art">
+            <img src={artworkData.publishedImage} alt="Current published decorative background"/>
+            <strong>Published background image</strong>
+           </div>}
+         <div className="am-simple-primary-actions">
+          <Form method="post"><input type="hidden" name="intent" value="approve_backdrop"/><input type="hidden" name="id" value={selected.id}/>
+           <button type="submit" disabled={selected.status!=="PUBLISHED"} className="ad-btn">Approve AI image</button></Form>
+          <Form method="post"><input type="hidden" name="intent" value="discard_backdrop"/><input type="hidden" name="id" value={selected.id}/>
+           <button type="submit" className="ad-btn ghost">Discard draft image</button></Form>
+          <Form method="post"><input type="hidden" name="intent" value="remove_live_backdrop"/><input type="hidden" name="id" value={selected.id}/>
+           <button type="submit" className="ad-btn ghost">Remove published image</button></Form>
+         </div>
+        </div>
+       </details>}
+       <details className="am-simple-accordion">
+        <summary>Compare performance with A/B testing (advanced)</summary>
+        <div className="am-simple-accordion-body">
+         <p className="ad-muted">A shows the normal Shopify page. B shows the AdMorph AI experience. Tracking needs the Shopify Web Pixel and visitor analytics consent. Results count recorded events, not verified unique customers or revenue.</p>
+         <div className="am-simple-results">
+          {(["A","B"] as const).map(arm=>{
+           const counts=report?.[arm]||{},views=counts.view||0,carts=counts.cart||0,purchases=counts.purchase||0;
+           return <div key={arm}><strong>{arm==="A"?"A — Original Shopify page":"B — AdMorph AI page"}</strong>
+             <p>{views} views · {counts.cta||0} CTA clicks</p><p>{carts} add-to-cart events · {purchases} completed checkout events</p>
+             <span>Observed checkout event rate: {views?(100*purchases/views).toFixed(1)+"%":"Not enough data"}</span>
+            </div>;
+          })}
+         </div>
+         <Form method="post">
+           <input type="hidden" name="intent" value="set_experiment"/><input type="hidden" name="id" value={selected.id}/>
+           <input type="hidden" name="enabled" value={experimentOn?"false":"true"}/>
+           <button className="ad-btn ghost" disabled={selected.status!=="PUBLISHED"} type="submit">
+            {experimentOn?"Stop A/B test":"Start 50/50 A/B test"}
+           </button>
+         </Form>
+         <p className="ad-muted">Before starting, connect the Shopify Web Pixel under Advanced setup at the bottom of this page.</p>
+        </div>
+       </details>
+       <details className="am-simple-accordion">
+        <summary>Original Meta ad and campaign controls</summary>
+        <div className="am-simple-accordion-body">
+         {originalAd?<div className="am-ad-creative-comparison">
+           {originalAd.creative.imageUrl.startsWith("https://")&&<img src={originalAd.creative.imageUrl} loading="lazy" alt="Original Meta advertisement artwork"/>}
+           <div><strong>{originalAd.name}</strong><p>{originalAd.creative.headline}</p><p>{originalAd.creative.body}</p></div>
+         </div>:<p className="ad-muted">The original ad is not currently in the saved Meta import.</p>}
+         <p className="ad-muted">Meta ad ID: {selected.metaAdId} · Shopify handle: {selected.productHandle}</p>
+         <div className="am-simple-primary-actions">
+          {selected.draftContent&&<Form method="post"><input type="hidden" name="intent" value="discard_draft"/><input type="hidden" name="id" value={selected.id}/>
+           <button className="ad-btn ghost" type="submit">Discard pending changes</button></Form>}
+          {selected.status==="PUBLISHED"&&<Form method="post"><input type="hidden" name="intent" value="unpublish"/><input type="hidden" name="id" value={selected.id}/>
+           <button className="ad-btn ghost" type="submit">Unpublish AI page</button></Form>}
+         </div>
+        </div>
+       </details>
+     </s-section>}
+     <s-section>
+      <div className="am-simple-section-heading"><div><span className="am-simple-step-label">STEP 3 — ONLY IF NEEDED</span>
+       <h2>Other Meta advertisements</h2>
+       <p>{otherAds.length} imported ads do not have a connected Shopify product. This is normal for ads promoting other websites, collections or several products.</p>
+      </div></div>
+      <details className="am-simple-accordion">
+       <summary>Show other Meta ads and connect a Shopify product ({otherAds.length})</summary>
+       <div className="am-simple-accordion-body">
+        <p className="ad-muted">Only connect an advertisement if it really promotes this Shopify product. Ads without an applicable product do not need any action.</p>
+        {otherAds.length>0&&<div className="am-simple-other-ads">{otherAds.map(ad=>
+         <button key={ad.id} type="button" className={mappingAd===ad.id?"active":""} onClick={()=>setMappingAd(ad.id)}>
+          <strong>{ad.name||ad.id}</strong><small>{ad.status} · {ad.creative.headline||"No ad headline"}</small>
+         </button>)}</div>}
+        <catalog.Form method="post"><input type="hidden" name="intent" value="load_products"/>
+          <button type="submit" className="ad-btn ghost" disabled={catalog.state!=="idle"}>
+           {catalog.state==="idle"?"Load Shopify products":"Loading products..."}</button>
+        </catalog.Form>
+        <Form method="post" className="am-simple-map-form">
+          <input type="hidden" name="intent" value="create"/>
+          <label>Meta advertisement
+           <select className="ad-input" name="adId" required value={mappingAd} onChange={e=>setMappingAd(e.target.value)}>
+            <option value="">Select an ad</option>
+            {d.ads.map(ad=><option value={ad.id} key={ad.id}>{ad.name||ad.id}</option>)}
+           </select></label>
+          <label>Actual Shopify product
+           <select className="ad-input" name="productId" required disabled={!products.length}>
+            <option value="">Select a product</option>
+            {products.map(p=><option key={p.id} value={p.id}>{p.title}</option>)}
+           </select></label>
+          <button className="ad-btn" type="submit" disabled={!mappingAd||!products.length}>Connect ad to product</button>
         </Form>
-        <div className="am-table-scroll">
-         <table className="ad-table am-campaign-table">
-          <thead><tr>
-           <th scope="col"><input aria-label="Select all displayed campaigns" type="checkbox" checked={allVisible} onChange={e=>setSelected(prev=>e.target.checked?[...new Set([...prev,...visible.map(c=>c.id)])]:prev.filter(id=>!visible.some(c=>c.id===id)))}/></th>
-           <th scope="col">Meta advertisement</th><th scope="col">Product</th><th scope="col">Status</th><th scope="col">Updated</th><th scope="col">Actions</th>
-          </tr></thead>
-          <tbody>
-           {visible.map(c=>{
-            const valid=campaignContentSchema.safeParse(selectPreviewContent(c));
-            const ad=d.ads.find(ad=>ad.id===c.metaAdId);
-            return <tr key={c.id}>
-              <td><input type="checkbox" aria-label={"Select "+c.productTitle} checked={selected.includes(c.id)} onChange={e=>toggle(c.id,e.target.checked)}/></td>
-              <td><strong>{ad?.name||"Ad "+c.metaAdId}</strong><small className="am-table-subtitle">{c.metaAdId}</small></td>
-              <td>{c.productTitle}<small className="am-table-subtitle">/products/{c.productHandle}</small></td>
-              <td><State text={c.draftContent?"Pending approval":c.status==="PUBLISHED"?"Published":valid.success?"Review draft":"Needs generation"} kind={c.draftContent?"warning":c.status==="PUBLISHED"?"success":valid.success?"warning":"neutral"}/></td>
-              <td>{new Date(c.updatedAt).toLocaleDateString("en-GB")}</td>
-              <td><button type="button" className="am-table-toggle" aria-expanded={expanded===c.id} onClick={()=>expanded===c.id?setExpanded(null):openExperience(c.id)}>{expanded===c.id?"Close":"View AI"}</button></td>
-             </tr>;
-           })}
-          </tbody>
-         </table>
-         {visible.length===0&&<div className="am-empty"><h3>No matching campaigns</h3><p>Try a different search or filter.</p></div>}
-        </div>
-        {expanded&&(()=>{
-          const c=d.campaigns.find(c=>c.id===expanded);
-          if(!c)return null;
-          // A v2 content object does not satisfy the legacy variant schema.
-          // Prefer a pending merchant draft but keep the published version available.
-          const valid=campaignContentSchema.safeParse(selectPreviewContent(c));
-          const publishedContent=campaignContentSchema.safeParse(c.content);
-          const originAd=d.ads.find(ad=>ad.id===c.metaAdId);
-          return <div className="am-detail-panel">
-            <div className="am-section-head"><h3>{c.productTitle}</h3><button type="button" className="am-table-toggle" onClick={()=>setExpanded(null)}>Close</button></div>
-            <p className="ad-muted">Meta ad: {c.metaAdId}{originAd?.name?" · "+originAd.name:""}</p>
-            {originAd&&<div className="am-ad-source">
-              <strong>Source Meta creative</strong>
-              <div className="am-ad-creative-comparison">
-                {originAd.creative.imageUrl.startsWith("https://")&&<img src={originAd.creative.imageUrl} alt="Original Meta ad creative" loading="lazy"/>}
-                <div><p>{originAd.creative.headline||originAd.creative.body||"No ad copy supplied by Meta."}</p>
-                  {originAd.creative.headline&&originAd.creative.body&&<p>{originAd.creative.body}</p>}
-                  <small>Compare the source creative above with the generated experience below. Verify that both refer to the actual Shopify product.</small>
-                </div>
-              </div>
-            </div>}
-            {c.status==="PUBLISHED"&&<a className="am-text-link" target="_blank" rel="noopener noreferrer" href={`https://${d.shop}/products/${encodeURIComponent(c.productHandle)}?admorph_ad=${encodeURIComponent(c.metaAdId)}`}>View published product experience</a>}
-            {c.draftContent&&publishedContent.success&&<details className="am-editor-details">
-              <summary>View current live experience (before pending changes)</summary>
-              {isExperience(publishedContent.data)?<ExperiencePreview content={publishedContent.data}/>:
-                <div className="ad-preview"><h3>{publishedContent.data.headline}</h3><p>{publishedContent.data.subheadline}</p><ul>{publishedContent.data.benefits.map((b,i)=><li key={i}>{b}</li>)}</ul></div>}
-            </details>}
-            {!valid.success&&<s-banner tone="warning">No AI content generated for this campaign. Match a relevant Shopify product, then use Generate Experience 2.0 to create a draft.</s-banner>}
-            {c.draftContent&&<s-banner tone="info">This is an unpublished update. The existing experience remains live until you approve the draft.</s-banner>}
-            {valid.success && isExperience(valid.data) && <>
-              {visual.state!=="idle"&&<p role="status" className="ad-muted">Loading verified Shopify product image…</p>}
-              {visual.data&&"campaignId" in visual.data&&visual.data.campaignId===c.id&&!visual.data.ok&&<p className="ad-muted">Product visual unavailable; showing generated copy preview instead.</p>}
-              <ExperiencePreview content={valid.data} productImageUrl={
-                visual.data&&"campaignId" in visual.data&&visual.data.campaignId===c.id&&"productVisual" in visual.data ?
-                visual.data.productVisual?.url||undefined:undefined
-              } productImageAlt={c.productTitle}/>
-              <details className="am-editor-details"><summary>Edit Experience 2.0 content</summary>
-                <ExperienceEditor id={c.id} content={valid.data}/>
-              </details>
-            </>}
-            {valid.success && !isExperience(valid.data) && <>
-              <div className="ad-preview"><h3>{valid.data.headline}</h3><p>{valid.data.subheadline}</p>
-                <ul>{valid.data.benefits.map((b,i)=><li key={i}>{b}</li>)}</ul>
-                <small>CTA: {valid.data.cta}</small>
-              </div>
-              <details className="am-editor-details"><summary>Edit legacy AI copy</summary>
-                <Form method="post" className="am-edit-fields">
-                  <input type="hidden" name="intent" value="save"/><input type="hidden" name="id" value={c.id}/>
-                  <label>Headline<input name="headline" className="ad-input" maxLength={130} defaultValue={valid.data.headline} required/></label>
-                  <label>Subheadline<textarea name="subheadline" className="ad-input" rows={3} maxLength={240} defaultValue={valid.data.subheadline} required/></label>
-                  {valid.data.benefits.map((benefit,i)=><label key={i}>Benefit {i+1}<input name={"benefit"+(i+1)} className="ad-input" maxLength={150} defaultValue={benefit} required/></label>)}
-                  <label>CTA<input name="cta" className="ad-input" maxLength={50} defaultValue={valid.data.cta} required/></label>
-                  <button className="ad-btn" type="submit">Save changes for review</button>
-                </Form>
-              </details>
-            </>}
-            {valid.success&&isExperience(valid.data)&&<section className="am-visual-studio-panel">
-              <h3>AI Image Studio</h3>
-              <p className="ad-muted">Generate original abstract background artwork matched to this Meta ad. Your verified Shopify product photograph remains separate and unchanged. Image generation uses the OpenAI API and may incur usage charges.</p>
-              {backdrop.state!=="idle"&&<p className="ad-muted">Loading visual asset…</p>}
-              {backdrop.data&&"campaignId" in backdrop.data&&backdrop.data.campaignId===c.id&&"draftImage" in backdrop.data&&
-               backdrop.data.draftImage&&<div className="am-image-review">
-                <img src={backdrop.data.draftImage} alt="Generated AI backdrop awaiting approval"/>
-                <p>AI GENERATED BACKGROUND — unpublished</p>
-               </div>}
-              {backdrop.data&&"campaignId" in backdrop.data&&backdrop.data.campaignId===c.id&&"publishedImage" in backdrop.data&&
-               backdrop.data.publishedImage&&<div className="am-image-review">
-                <img src={backdrop.data.publishedImage} alt="Published AI background art"/>
-                <p>Published background artwork</p>
-               </div>}
-              <div className="am-inline-actions">
-                <Form method="post"><input type="hidden" name="intent" value="generate_backdrop"/><input type="hidden" name="id" value={c.id}/>
-                 <button type="submit" className="ad-btn ghost">Generate AI Background</button></Form>
-                <backdrop.Form method="post"><input type="hidden" name="intent" value="preview_backdrop"/><input type="hidden" name="id" value={c.id}/>
-                 <button type="submit" className="ad-btn ghost" disabled={backdrop.state!=="idle"}>Refresh Image Preview</button></backdrop.Form>
-                <Form method="post"><input type="hidden" name="intent" value="approve_backdrop"/><input type="hidden" name="id" value={c.id}/>
-                 <button type="submit" className="ad-btn" disabled={c.status!=="PUBLISHED"}>Approve AI Image</button></Form>
-                <Form method="post"><input type="hidden" name="intent" value="discard_backdrop"/><input type="hidden" name="id" value={c.id}/>
-                 <button type="submit" className="ad-btn ghost">Discard Draft Image</button></Form>
-                <Form method="post"><input type="hidden" name="intent" value="remove_live_backdrop"/><input type="hidden" name="id" value={c.id}/>
-                 <button type="submit" className="ad-btn ghost">Remove Live AI Image</button></Form>
-              </div>
-             </section>}
-            <section className="am-experiment-panel">
-             <h3>A/B Conversion Experiment</h3>
-             <p className="ad-muted">A = original Shopify product page. B = AdMorph AI experience. Shopify Web Pixel tracks consented views, CTA interactions, confirmed add-to-cart events, and checkout completed signals where attribution persists.</p>
-             {(()=>{
-              const enabled=d.experiments.find(e=>e.campaignId===c.id)?.enabled||false;
-              const stats=d.experimentResults[c.id]||{};
-              const a=stats.A||{},b=stats.B||{};
-              return <div>
-               <div className="am-experiment-grid">{(["A","B"] as const).map(arm=>{
-                const counts=arm==="A"?a:b;
-                const views=counts.view||0,carts=counts.cart||0,purchases=counts.purchase||0;
-                return <div key={arm}>
-                  <strong>{arm==="A"?"A — Control":"B — AdMorph AI"}</strong>
-                  <p>{views} recorded views · {counts.cta||0} CTA clicks</p>
-                  <p>{carts} Shopify add-to-cart events · {purchases} checkout-completed events</p>
-                  <p>Cart event rate: {views?(100*carts/views).toFixed(1)+"%":"—"} · Purchase event rate: {views?(100*purchases/views).toFixed(1)+"%":"—"}</p>
-                </div>;
-               })}</div>
-               <Form method="post"><input type="hidden" name="intent" value="set_experiment"/><input type="hidden" name="id" value={c.id}/>
-                <input type="hidden" name="enabled" value={enabled?"false":"true"}/>
-                <button type="submit" disabled={c.status!=="PUBLISHED"} className="ad-btn ghost">{enabled?"Stop A/B Experiment":"Start A/B Experiment (50/50)"}</button>
-               </Form>
-              </div>;
-             })()}
-            </section>
-            <div className="am-edit-actions">
-              <Form method="post"><input type="hidden" name="intent" value="generate"/><input type="hidden" name="id" value={c.id}/>
-                <button type="submit" className="ad-btn ghost">{valid.success?"Generate Experience 2.0":"Generate first AI experience"}</button></Form>
-              {valid.success&&isExperience(valid.data)&&<Form method="post">
-                <input type="hidden" name="intent" value="generate_visual"/>
-                <input type="hidden" name="id" value={c.id}/>
-                <button type="submit" className="ad-btn ghost">AI Suggest New Visual Direction</button>
-              </Form>}
-              {valid.success&&((c.status==="DRAFT")||Boolean(c.draftContent))&&<Form method="post">
-                 <input type="hidden" name="intent" value="publish"/><input type="hidden" name="id" value={c.id}/>
-                 <button type="submit" className="ad-btn">Approve & publish {isExperience(valid.data)?"Experience 2.0":"draft"}</button></Form>}
-              {c.status==="PUBLISHED"&&<Form method="post"><input type="hidden" name="intent" value="unpublish"/><input type="hidden" name="id" value={c.id}/>
-                <button type="submit" className="ad-btn ghost">Unpublish</button></Form>}
-              {c.draftContent&&<Form method="post"><input type="hidden" name="intent" value="discard_draft"/><input type="hidden" name="id" value={c.id}/>
-                <button type="submit" className="ad-btn ghost">Discard pending update</button></Form>}
-            </div>
-          </div>;
-        })()}
-        <p className="ad-muted">Showing up to 200 recent campaigns. Bulk actions only apply to your selected campaigns. Every campaign with generated AI content has an Open preview.</p>
-      </>}
-    </s-section>
-    <s-section>
-      <SectionHead title="All Meta Ads" action={<State text={unmatchedAds.length+" without a product"} kind={unmatchedAds.length?"warning":"success"}/>}/>
-      <p className="ad-muted">Every imported ad from Meta appears here, including paused ads and those that promote a non-Shopify destination. A Meta ad is not itself an AI campaign until a Shopify product has been matched.</p>
-      {!adInventory.length?<Empty title="No Meta ads imported" description="Connect Meta and run Autopilot to import advertising creatives." href="/app/meta" label="Open Meta connection"/>:
-       <div className="am-table-scroll"><table className="ad-table am-campaign-table">
-        <thead><tr><th scope="col">Meta ad</th><th scope="col">Meta status</th><th scope="col">AI experience</th><th scope="col">Action</th></tr></thead>
-        <tbody>{adInventory.map(ad=><tr key={ad.id}>
-           <td><strong>{ad.name||"Untitled ad"}</strong><small className="am-table-subtitle">{ad.id}</small>
-            {(ad.creative.headline||ad.creative.body)&&<small className="am-table-subtitle">{(ad.creative.headline||ad.creative.body).slice(0,125)}</small>}
-           </td>
-           <td><State text={ad.status==="ACTIVE"?"Active":ad.status.replace(/_/g," ").toLowerCase()} kind={ad.status==="ACTIVE"?"success":"neutral"}/></td>
-           <td>{ad.linked.length? <span>{ad.linked.length} linked campaign{ad.linked.length===1?"":"s"}{ad.hasAI?" · AI generated":" · Awaiting generation"}</span> :
-             <State text="Not matched to Shopify" kind="warning"/>}</td>
-           <td><div className="am-inline-actions">
-             {ad.linked.map(c=><button key={c.id} type="button" className="am-table-toggle" onClick={()=>openExperience(c.id)}>{hasValidCampaignContent(selectPreviewContent(c))?"View AI experience":"Open campaign"}</button>)}
-             <button type="button" className="am-table-toggle" onClick={()=>chooseAdForMapping(ad.id)}>Match to product</button>
-           </div></td>
-        </tr>)}</tbody>
-       </table></div>}
-      <p className="ad-muted">Ads with no verified product link are never matched automatically. Manual matching requires choosing the actual promoted Shopify product; unrelated external website ads should not be paired.</p>
-    </s-section>
-    <div id="manual-ad-match"/>
-    <s-section>
-      <SectionHead title="Manually match an ad"/>
-      <p className="ad-muted">Use this only when the ad genuinely promotes a product in this Shopify store. Load products, select the Meta ad and product, then generate the experience in Campaign library.</p>
-      <catalog.Form method="post" style={{margin:"14px 0"}}>
-        <input type="hidden" name="intent" value="load_products"/>
-        <button type="submit" className="ad-btn ghost" disabled={catalog.state!=="idle"}>{catalog.state==="idle"?"Load Shopify products":"Loading products..."}</button>
-        {catalog.data&&<span className="ad-muted" style={{marginLeft:12}} role="status">{catalog.data.message}</span>}
-      </catalog.Form>
-      <Form method="post">
-        <input type="hidden" name="intent" value="create"/>
-        <div className="ad-form-row">
-          <label className="ad-label" htmlFor="adId">Meta advertisement
-            <select className="ad-input" id="adId" name="adId" value={manualAdId} onChange={e=>setManualAdId(e.target.value)} required>
-              <option value="">Select ad</option>{d.ads.map(ad=><option key={ad.id} value={ad.id}>{ad.name} ({ad.id})</option>)}
-            </select>
-          </label>
-          <label className="ad-label" htmlFor="productId">Shopify product
-            <select className="ad-input" id="productId" name="productId" required>
-              <option value="">Select product</option>{products.map(p=><option key={p.id} value={p.id}>{p.title}</option>)}
-            </select>
-          </label>
-        </div>
-        <button type="submit" className="ad-btn ghost" disabled={!d.ads.length||!products.length}>Create draft campaign</button>
-      </Form>
-      <p className="ad-muted">Then generate, review and publish copy. Activate the <Link to="/app/theme">theme block</Link> for storefront display.</p>
-    </s-section>
+       </div>
+      </details>
+     </s-section>
+     <details className="am-simple-advanced">
+      <summary>Advanced setup and bulk campaign actions</summary>
+      <div className="am-simple-advanced-body">
+       <h3>Conversion tracking setup</h3>
+       <p className="ad-muted">Shopify Web Pixel must be released with the required permissions. Connect it once per store to measure consent-based experiment events.</p>
+       <Form method="post"><input type="hidden" name="intent" value="activate_pixel"/>
+        <button className="ad-btn ghost" type="submit">Connect Shopify Web Pixel</button></Form>
+       <h3>Manage multiple campaigns</h3>
+       <p className="ad-muted">These actions change several campaigns at once. Individual review is safer for AI-generated content.</p>
+       <div className="am-simple-bulk-list">{d.campaigns.map(c=>
+        <label key={c.id}><input type="checkbox" checked={selectedBulk.includes(c.id)} onChange={e=>selectBulk(c.id,e.target.checked)}/>
+        {c.productTitle} <small>({d.ads.find(a=>a.id===c.metaAdId)?.name||c.metaAdId})</small></label>)}</div>
+       <Form method="post" onSubmit={confirmBulk} className="am-simple-primary-actions">
+        <input type="hidden" name="confirmDelete" value="yes"/>
+        {selectedBulk.map(id=><input type="hidden" name="ids" value={id} key={id}/>)}
+        <button type="submit" className="ad-btn ghost" name="intent" value="bulk_publish" disabled={!selectedBulk.length}>Publish selected drafts</button>
+        <button type="submit" className="ad-btn ghost" name="intent" value="bulk_unpublish" disabled={!selectedBulk.length}>Unpublish selected</button>
+        <button type="submit" className="ad-btn am-danger" name="intent" value="bulk_delete" disabled={!selectedBulk.length}>Delete selected</button>
+       </Form>
+      </div>
+     </details>
    </div>
  </s-page>;
 }
