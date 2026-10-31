@@ -2,14 +2,14 @@
 client_id = ""
 name = "AdMorph AI"
 embedded = true
-application_url = "https://example.invalid"
+application_url = "https://admorphai.onrender.com"
 handle = "admorph-ai"
 
 [access_scopes]
 scopes = "read_products,write_app_proxy"
 
 [auth]
-redirect_urls = ["https://example.invalid/auth/callback"]
+redirect_urls = ["https://admorphai.onrender.com/auth/callback"]
 
 [webhooks]
 api_version = "2026-10"

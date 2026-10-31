@@ -1,5 +1,5 @@
 import type {ActionFunctionArgs,LoaderFunctionArgs} from "react-router";
-import {Form,useActionData,useLoaderData} from "react-router";
+import {Form,useActionData,useLoaderData,redirect} from "react-router";
 import {authenticate} from "../shopify.server";
 import prisma from "../db.server";
 import {importMetaAds} from "../services/meta.server";
@@ -30,7 +30,7 @@ export const action=async({request}:ActionFunctionArgs)=>{
    const accounts=(meta?.accounts||[]) as Array<{id:string,name:string}>;
    if(!accounts.some(a=>a.id===accountId)) throw new Error("Selected account is not authorized");
    await prisma.metaConnection.update({where:{shop:session.shop},data:{selectedAccountId:accountId}});
-   return {ok:true,message:"Account selected"};
+   return redirect("/app/autopilot?run=1");
   }
   if(intent==="import") {
    const result=await importMetaAds(session.shop);

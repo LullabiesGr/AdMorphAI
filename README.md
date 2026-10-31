@@ -25,6 +25,15 @@ Meta token is encrypted at rest with AES-256-GCM and is never returned to the br
 ## Deployment note
 Bolt.new can develop this repository, but first confirm its chosen production hosting executes Node React Router SSR (`npm run start`), persists environment secrets and can receive Shopify OAuth/webhooks. Static SPA hosting cannot run Shopify Admin authentication, Meta OAuth callback or Prisma. If Bolt deployment is static-only, host the Node server on a supported service and use Bolt for editing.
 
+## AI Autopilot MVP
+- Connect one Meta ad account: the app selects it automatically; a multi-account merchant chooses one before Autopilot starts.
+- One-click batch processing imports the first 50 ads, verifies active product URLs against merchant-owned Shopify domains, generates factual AI draft copy and updates the dashboard.
+- The merchant can opt in to auto-publish future AI content. Default is drafts pending review. Existing drafts can be published through the dashboard.
+- Deep link to Shopify Theme Editor preselects the AdMorph product block; the merchant still must click Save once.
+- Meta ad-click identification still requires `admorph_ad={{ad.id}}` tracking in ads' destination URLs. `ads_read` cannot edit ad URLs, so automatic tracking configuration requires separate `ads_management` authorization and implementation.
+- The run auto-continues through small batches while the dashboard tab is open. Continuous scheduled background synchronization is not yet enabled.
+- `shopify.app.toml` has the production Render URL; it still needs the real `client_id` from `shopify app config link` before the next Shopify CLI app/extension deployment.
+
 ## Next
 - Build authenticated Shopify Web Pixel Extension and consent-aware conversion analytics.
 - Add billing, advanced experimentation and robust Meta pagination/synchronization.
