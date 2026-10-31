@@ -1,0 +1,9 @@
+{
+  "name": "admorph-web-pixel",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "dependencies": {
+    "@shopify/web-pixels-extension": "^2.10.0"
+  }
+}

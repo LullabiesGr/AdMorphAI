@@ -1,5 +1,6 @@
 type = "web_pixel_extension"
 name = "AdMorph Conversion Pixel"
+uid = "5ecb94ec-9498-4ae3-b4e1-8e0be4f6a9d2"
 runtime_context = "strict"
 
 [customer_privacy]
