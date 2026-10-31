@@ -290,3 +290,13 @@
 .am-visual-controls label{display:flex;flex-direction:column;gap:7px;font-size:12px;font-weight:600}
 .am-visual-controls select,.am-visual-controls input{width:100%;max-width:100%}
 @media(max-width:620px){.am-preview-visual-spotlight .am-experience-banner{max-width:95%;margin:-20px auto 14px}}
+
+.am-visual-studio-panel,.am-experiment-panel{border:1px solid #d8e0e9;background:#fafbfe;border-radius:12px;padding:18px;margin:16px 0;display:grid;gap:12px}
+.am-visual-studio-panel h3,.am-experiment-panel h3{font-size:17px;margin:0}
+.am-image-review{max-width:530px;background:white;border-radius:8px;overflow:hidden;border:1px solid #e5e8ec}
+.am-image-review img{display:block;width:100%;height:245px;object-fit:cover}
+.am-image-review p{font-size:11px;font-weight:650;padding:9px 13px;margin:0}
+.am-experiment-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;margin:12px 0}
+.am-experiment-grid>div{background:white;padding:15px;border:1px solid #dce3eb;border-radius:10px}
+.am-experiment-grid p{font-size:12px;line-height:1.55;color:#596476}
+@media(max-width:700px){.am-experiment-grid{grid-template-columns:1fr}}

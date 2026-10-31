@@ -6,6 +6,8 @@ import prisma from "../db.server";
 import {authenticate} from "../shopify.server";
 import {listProducts,getProduct} from "../services/products.server";
 import {generateExperience,generateVisualDirection} from "../services/ai.server";
+import {generateCampaignBackdrop} from "../services/image-generation.server";
+import {experimentReport} from "../services/experiment.server";
 import {ExperiencePreview,ExperienceEditor} from "../components/experience-preview";
 import {variantSchema} from "../lib/variant";
 import {experienceSchema,visualDirectionSchema,campaignContentSchema,hasValidCampaignContent,isExperience,resolveVisualDirection} from "../lib/experience";
@@ -18,15 +20,18 @@ export const loader=async({request}:LoaderFunctionArgs)=>{
  // refresh, and an API-level 200 Response must not blank the entire campaign UI.
  console.info("[AdMorph campaigns] loader entered");
  const {session}=await authenticate.admin(request);
- const [ads,campaigns]=await Promise.all([
+ const [ads,campaigns,experiments,images]=await Promise.all([
   prisma.metaAd.findMany({where:{shop:session.shop},orderBy:{updatedAt:"desc"},take:200}),
-  prisma.campaign.findMany({where:{shop:session.shop},orderBy:{updatedAt:"desc"},take:200})
+  prisma.campaign.findMany({where:{shop:session.shop},orderBy:{updatedAt:"desc"},take:200}),
+  prisma.campaignExperiment.findMany({where:{shop:session.shop},select:{campaignId:true,enabled:true}}),
+  prisma.campaignImage.findMany({where:{shop:session.shop},select:{campaignId:true}})
  ]);
  console.info("[AdMorph campaigns] loader complete",{ads:ads.length,campaigns:campaigns.length});
+ const experimentResults=await experimentReport(session.shop,campaigns.map(c=>c.id));
  return {
    shop:session.shop,
    ads:ads.map(ad=>({id:ad.adId,name:ad.name,status:ad.status,creative:metaCreativeCopy(ad.creative)})),
-   campaigns
+   campaigns,experiments,images,experimentResults
  };
 };
 
@@ -41,6 +46,78 @@ export const action=async({request}:ActionFunctionArgs)=>{
     if(!campaign)throw new Error("Campaign not found.");
     const product=await getProduct(admin,campaign.productId);
     return {ok:true,message:"Shopify product image loaded.",campaignId:id,productVisual:product.featuredImage};
+  }
+  if(intent==="generate_backdrop"){
+    const id=String(data.get("id")||"");
+    const campaign=await prisma.campaign.findFirst({where:{id,shop}});
+    if(!campaign)throw new Error("Campaign not found");
+    const experience=experienceSchema.safeParse(campaign.draftContent||campaign.content);
+    if(!experience.success)throw new Error("Generate an Experience 2.0 first");
+    const ad=await prisma.metaAd.findUnique({where:{shop_adId:{shop,adId:campaign.metaAdId}}});
+    if(!ad)throw new Error("Meta ad not found");
+    const product=await getProduct(admin,campaign.productId);
+    const visual=resolveVisualDirection(experience.data);
+    const bytes=await generateCampaignBackdrop({
+      product,adCreative:ad.creative,angle:experience.data.angle,
+      palette:visual.palette,mood:visual.mood
+    });
+    await prisma.campaignImage.upsert({
+      where:{campaignId:id},create:{campaignId:id,shop,draftData:bytes},
+      update:{draftData:bytes}
+    });
+    return {ok:true,message:"AI background generated as a draft. Review the image before approving it.",campaignId:id};
+  }
+  if(intent==="preview_backdrop"){
+    const id=String(data.get("id")||"");
+    const campaign=await prisma.campaign.findFirst({where:{id,shop},select:{id:true}});
+    if(!campaign)throw new Error("Campaign not found");
+    const image=await prisma.campaignImage.findUnique({where:{campaignId:id}});
+    return {ok:true,message:"Visual assets loaded",campaignId:id,
+      draftImage:image?.draftData?"data:image/webp;base64,"+Buffer.from(image.draftData).toString("base64"):null,
+      publishedImage:image?.publishedData?"data:image/webp;base64,"+Buffer.from(image.publishedData).toString("base64"):null};
+  }
+  if(["approve_backdrop","discard_backdrop","remove_live_backdrop"].includes(intent)){
+    const id=String(data.get("id")||"");
+    const campaign=await prisma.campaign.findFirst({where:{id,shop}});
+    if(!campaign)throw new Error("Campaign not found");
+    if(intent==="approve_backdrop"){
+      if(campaign.status!=="PUBLISHED")throw new Error("Publish the campaign copy before approving visual artwork.");
+      const image=await prisma.campaignImage.findFirst({where:{campaignId:id,shop}});
+      if(!image?.draftData)throw new Error("No pending AI image to approve");
+      await prisma.campaignImage.update({where:{campaignId:id},data:{
+        publishedData:image.draftData,draftData:null
+      }});
+      return {ok:true,message:"AI background approved and published. The original product photograph stays unchanged."};
+    }
+    await prisma.campaignImage.updateMany({where:{campaignId:id,shop},data:
+      intent==="discard_backdrop"?{draftData:null}:{publishedData:null}});
+    return {ok:true,message:intent==="discard_backdrop"?"AI draft discarded.":"Published AI image removed."};
+  }
+  if(intent==="set_experiment"){
+    const id=String(data.get("id")||"");
+    const campaign=await prisma.campaign.findFirst({where:{id,shop}});
+    if(!campaign)throw new Error("Campaign not found");
+    const enabled=data.get("enabled")==="true";
+    if(enabled&&campaign.status!=="PUBLISHED")throw new Error("Publish the campaign before starting its experiment.");
+    await prisma.campaignExperiment.upsert({
+      where:{campaignId:id},create:{campaignId:id,shop,enabled},update:{enabled}
+    });
+    return {ok:true,message:enabled?"A/B experiment enabled. 50/50 allocation applies to analytics-consenting visitors.":"A/B experiment stopped. AdMorph experience resumes for all eligible visitors."};
+  }
+  if(intent==="activate_pixel"){
+    const response=await admin.graphql(`#graphql
+      mutation InstallAdMorphPixel($settings:JSON!){
+       webPixelCreate(webPixel:{settings:$settings}){
+        webPixel{id}
+        userErrors{code message}
+       }
+      }`,{variables:{settings:JSON.stringify({shop})}});
+    const result=await response.json();
+    if(result.errors)throw new Error(result.errors.map((x:{message:string})=>x.message).join("; "));
+    const mutation=result.data?.webPixelCreate;
+    if(mutation?.userErrors?.length)throw new Error(mutation.userErrors.map((x:{message:string})=>x.message).join("; "));
+    if(!mutation?.webPixel?.id)throw new Error("Shopify Pixel was not created");
+    return {ok:true,message:"Shopify Web Pixel connected. Add-to-cart and completed checkout events are now eligible for consent-based attribution."};
   }
   if(intent==="load_products"){
     const products=await listProducts(admin);
@@ -201,6 +278,7 @@ export default function Campaigns(){
  const d=useLoaderData<typeof loader>(),a=useActionData<typeof action>();
  const catalog=useFetcher<typeof action>();
  const visual=useFetcher<typeof action>();
+ const backdrop=useFetcher<typeof action>();
  const products=(catalog.data && "products" in catalog.data && Array.isArray(catalog.data.products)) ? catalog.data.products : [];
  const [filter,setFilter]=useState<Filter>("all");
  const [search,setSearch]=useState("");
@@ -216,6 +294,7 @@ export default function Campaigns(){
    setFilter("all");
    setSearch("");
    visual.submit({intent:"preview_product",id},{method:"post"});
+   backdrop.submit({intent:"preview_backdrop",id},{method:"post"});
    document.getElementById("campaign-library")?.scrollIntoView({behavior:"smooth",block:"start"});
  }
  function chooseAdForMapping(adId:string){
@@ -252,6 +331,13 @@ export default function Campaigns(){
       <Stat label="Needs product matching" value={unmatchedAds.length} note="Imported ads without campaign"/>
       <Stat label="Published experiences" value={published} note="Available on the matched product" tone="success"/>
     </div>
+    <s-section>
+      <SectionHead title="Conversion tracking setup"/>
+      <p className="ad-muted">A/B measurement requires the AdMorph Shopify Web Pixel to be released with read_customer_events and write_pixels permissions, then connected once per store. Tracking respects Shopify Customer Privacy settings.</p>
+      <Form method="post"><input type="hidden" name="intent" value="activate_pixel"/>
+        <button className="ad-btn ghost" type="submit">Connect Shopify Web Pixel</button>
+      </Form>
+    </s-section>
     <div id="campaign-library"/>
     <s-section>
       <SectionHead title="Campaign library" action={<State text={pending+" need AI copy"} kind={pending?"warning":"success"}/>}/>
@@ -358,6 +444,58 @@ export default function Campaigns(){
                 </Form>
               </details>
             </>}
+            {valid.success&&isExperience(valid.data)&&<section className="am-visual-studio-panel">
+              <h3>AI Image Studio</h3>
+              <p className="ad-muted">Generate original abstract background artwork matched to this Meta ad. Your verified Shopify product photograph remains separate and unchanged. Image generation uses the OpenAI API and may incur usage charges.</p>
+              {backdrop.state!=="idle"&&<p className="ad-muted">Loading visual asset…</p>}
+              {backdrop.data&&"campaignId" in backdrop.data&&backdrop.data.campaignId===c.id&&"draftImage" in backdrop.data&&
+               backdrop.data.draftImage&&<div className="am-image-review">
+                <img src={backdrop.data.draftImage} alt="Generated AI backdrop awaiting approval"/>
+                <p>AI GENERATED BACKGROUND — unpublished</p>
+               </div>}
+              {backdrop.data&&"campaignId" in backdrop.data&&backdrop.data.campaignId===c.id&&"publishedImage" in backdrop.data&&
+               backdrop.data.publishedImage&&<div className="am-image-review">
+                <img src={backdrop.data.publishedImage} alt="Published AI background art"/>
+                <p>Published background artwork</p>
+               </div>}
+              <div className="am-inline-actions">
+                <Form method="post"><input type="hidden" name="intent" value="generate_backdrop"/><input type="hidden" name="id" value={c.id}/>
+                 <button type="submit" className="ad-btn ghost">Generate AI Background</button></Form>
+                <backdrop.Form method="post"><input type="hidden" name="intent" value="preview_backdrop"/><input type="hidden" name="id" value={c.id}/>
+                 <button type="submit" className="ad-btn ghost" disabled={backdrop.state!=="idle"}>Refresh Image Preview</button></backdrop.Form>
+                <Form method="post"><input type="hidden" name="intent" value="approve_backdrop"/><input type="hidden" name="id" value={c.id}/>
+                 <button type="submit" className="ad-btn" disabled={c.status!=="PUBLISHED"}>Approve AI Image</button></Form>
+                <Form method="post"><input type="hidden" name="intent" value="discard_backdrop"/><input type="hidden" name="id" value={c.id}/>
+                 <button type="submit" className="ad-btn ghost">Discard Draft Image</button></Form>
+                <Form method="post"><input type="hidden" name="intent" value="remove_live_backdrop"/><input type="hidden" name="id" value={c.id}/>
+                 <button type="submit" className="ad-btn ghost">Remove Live AI Image</button></Form>
+              </div>
+             </section>}
+            <section className="am-experiment-panel">
+             <h3>A/B Conversion Experiment</h3>
+             <p className="ad-muted">A = original Shopify product page. B = AdMorph AI experience. Shopify Web Pixel tracks consented views, CTA interactions, confirmed add-to-cart events, and checkout completed signals where attribution persists.</p>
+             {(()=>{
+              const enabled=d.experiments.find(e=>e.campaignId===c.id)?.enabled||false;
+              const stats=d.experimentResults[c.id]||{};
+              const a=stats.A||{},b=stats.B||{};
+              return <div>
+               <div className="am-experiment-grid">{(["A","B"] as const).map(arm=>{
+                const counts=arm==="A"?a:b;
+                const views=counts.view||0,carts=counts.cart||0,purchases=counts.purchase||0;
+                return <div key={arm}>
+                  <strong>{arm==="A"?"A — Control":"B — AdMorph AI"}</strong>
+                  <p>{views} recorded views · {counts.cta||0} CTA clicks</p>
+                  <p>{carts} Shopify add-to-cart events · {purchases} checkout-completed events</p>
+                  <p>Cart event rate: {views?(100*carts/views).toFixed(1)+"%":"—"} · Purchase event rate: {views?(100*purchases/views).toFixed(1)+"%":"—"}</p>
+                </div>;
+               })}</div>
+               <Form method="post"><input type="hidden" name="intent" value="set_experiment"/><input type="hidden" name="id" value={c.id}/>
+                <input type="hidden" name="enabled" value={enabled?"false":"true"}/>
+                <button type="submit" disabled={c.status!=="PUBLISHED"} className="ad-btn ghost">{enabled?"Stop A/B Experiment":"Start A/B Experiment (50/50)"}</button>
+               </Form>
+              </div>;
+             })()}
+            </section>
             <div className="am-edit-actions">
               <Form method="post"><input type="hidden" name="intent" value="generate"/><input type="hidden" name="id" value={c.id}/>
                 <button type="submit" className="ad-btn ghost">{valid.success?"Generate Experience 2.0":"Generate first AI experience"}</button></Form>
