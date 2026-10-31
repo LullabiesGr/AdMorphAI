@@ -34,6 +34,13 @@ export const action=async({request}:ActionFunctionArgs)=>{
  const data=await request.formData(),intent=String(data.get("intent")||"");
  const shop=session.shop;
  try {
+  if(intent==="preview_product"){
+    const id=String(data.get("id")||"");
+    const campaign=await prisma.campaign.findFirst({where:{id,shop},select:{id:true,productId:true}});
+    if(!campaign)throw new Error("Campaign not found.");
+    const product=await getProduct(admin,campaign.productId);
+    return {ok:true,message:"Shopify product image loaded.",campaignId:id,productVisual:product.featuredImage};
+  }
   if(intent==="load_products"){
     const products=await listProducts(admin);
     return {ok:true,message:products.length+" active Shopify products loaded.",products};
@@ -167,6 +174,7 @@ type Filter="all"|"review"|"published"|"generate";
 export default function Campaigns(){
  const d=useLoaderData<typeof loader>(),a=useActionData<typeof action>();
  const catalog=useFetcher<typeof action>();
+ const visual=useFetcher<typeof action>();
  const products=(catalog.data && "products" in catalog.data && Array.isArray(catalog.data.products)) ? catalog.data.products : [];
  const [filter,setFilter]=useState<Filter>("all");
  const [search,setSearch]=useState("");
@@ -182,6 +190,7 @@ export default function Campaigns(){
    setExpanded(id);
    setFilter("all");
    setSearch("");
+   visual.submit({intent:"preview_product",id},{method:"post"});
    document.getElementById("campaign-library")?.scrollIntoView({behavior:"smooth",block:"start"});
  }
  function chooseAdForMapping(adId:string){
@@ -261,7 +270,7 @@ export default function Campaigns(){
               <td>{c.productTitle}<small className="am-table-subtitle">/products/{c.productHandle}</small></td>
               <td><State text={c.draftContent?"Pending approval":c.status==="PUBLISHED"?"Published":valid.success?"Review draft":"Needs generation"} kind={c.draftContent?"warning":c.status==="PUBLISHED"?"success":valid.success?"warning":"neutral"}/></td>
               <td>{new Date(c.updatedAt).toLocaleDateString("en-GB")}</td>
-              <td><button type="button" className="am-table-toggle" aria-expanded={expanded===c.id} onClick={()=>setExpanded(expanded===c.id?null:c.id)}>{expanded===c.id?"Close":"Open"}</button></td>
+              <td><button type="button" className="am-table-toggle" aria-expanded={expanded===c.id} onClick={()=>expanded===c.id?setExpanded(null):openExperience(c.id)}>{expanded===c.id?"Close":"View AI"}</button></td>
              </tr>;
            })}
           </tbody>
@@ -289,7 +298,12 @@ export default function Campaigns(){
             {!valid.success&&<s-banner tone="warning">No AI content generated for this campaign. Match a relevant Shopify product, then use Generate Experience 2.0 to create a draft.</s-banner>}
             {c.draftContent&&<s-banner tone="info">This is an unpublished update. The existing experience remains live until you approve the draft.</s-banner>}
             {valid.success && isExperience(valid.data) && <>
-              <ExperiencePreview content={valid.data}/>
+              {visual.state!=="idle"&&<p role="status" className="ad-muted">Loading verified Shopify product image…</p>}
+              {visual.data&&"campaignId" in visual.data&&visual.data.campaignId===c.id&&!visual.data.ok&&<p className="ad-muted">Product visual unavailable; showing generated copy preview instead.</p>}
+              <ExperiencePreview content={valid.data} productImageUrl={
+                visual.data&&"campaignId" in visual.data&&visual.data.campaignId===c.id&&"productVisual" in visual.data ?
+                visual.data.productVisual?.url||undefined:undefined
+              } productImageAlt={c.productTitle}/>
               <details className="am-editor-details"><summary>Edit Experience 2.0 content</summary>
                 <ExperienceEditor id={c.id} content={valid.data}/>
               </details>

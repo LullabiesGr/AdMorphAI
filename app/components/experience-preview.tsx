@@ -1,13 +1,18 @@
 import {Form} from "react-router";
 import type {Experience} from "../lib/experience";
 
-export function ExperiencePreview({content:c}:{content:Experience}){
+export function ExperiencePreview({content:c,productImageUrl,productImageAlt}:{content:Experience;productImageUrl?:string;productImageAlt?:string}){
  return <div className={"am-experience-preview am-experience-"+c.layout}>
+   <div className="am-experience-hero-row">
    <div className="am-experience-banner">
      <span className="am-experience-eyebrow">{c.hero.eyebrow}</span>
      <h2>{c.hero.headline}</h2>
      <p>{c.hero.subheadline}</p>
      <span className="am-experience-angle">Meta angle: {c.angle}</span>
+   </div>
+   {productImageUrl?.startsWith("https://")&&<div className="am-experience-product-image">
+     <img src={productImageUrl} alt={productImageAlt||"Shopify product image"} loading="lazy"/>
+   </div>}
    </div>
    <div className="am-experience-detail">
      <p className="am-experience-eyebrow">The details</p>
