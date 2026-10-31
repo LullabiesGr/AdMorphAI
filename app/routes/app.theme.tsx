@@ -7,11 +7,16 @@ import {themeEditorUrl} from "../services/overview.server";
 import {PageIntro,State,SectionHead} from "../components/dashboard";
 export const loader=async({request}:LoaderFunctionArgs)=>{
  const {session}=await authenticate.admin(request);
- const [setting,published]=await Promise.all([
+ const [setting,published,testCampaign]=await Promise.all([
   prisma.automationSetting.findUnique({where:{shop:session.shop},select:{themeConfirmedAt:true}}),
-  prisma.campaign.count({where:{shop:session.shop,status:"PUBLISHED"}})
+  prisma.campaign.count({where:{shop:session.shop,status:"PUBLISHED"}}),
+  prisma.campaign.findFirst({where:{shop:session.shop,status:"PUBLISHED"},orderBy:{updatedAt:"desc"},select:{productHandle:true,metaAdId:true,productTitle:true}})
  ]);
- return {themeConfirmedAt:setting?.themeConfirmedAt||null,published,editorUrl:themeEditorUrl(session.shop)};
+ const base="https://"+session.shop;
+ const testLink=testCampaign ? base+"/products/"+encodeURIComponent(testCampaign.productHandle)+"?admorph_ad="+encodeURIComponent(testCampaign.metaAdId) : null;
+ const proxyLink=testCampaign ? base+"/apps/admorph?ad_id="+encodeURIComponent(testCampaign.metaAdId)+"&product_handle="+encodeURIComponent(testCampaign.productHandle) : null;
+ return {themeConfirmedAt:setting?.themeConfirmedAt||null,published,editorUrl:themeEditorUrl(session.shop),
+  testProduct:testCampaign?.productTitle||null,testLink,proxyLink};
 };
 export const action=async({request}:ActionFunctionArgs)=>{
  const {session}=await authenticate.admin(request);
@@ -101,6 +106,13 @@ export default function Theme(){
        </s-section>
      </div>
      <aside className="am-side-column">
+       {d.testLink&&<s-section>
+         <SectionHead title="Test a published experience"/>
+         <p className="ad-muted">Testing with your published AI campaign: <strong>{d.testProduct}</strong>.</p>
+         <a className="ad-btn am-standalone-action" href={d.testLink} target="_blank" rel="noopener noreferrer">Open personalized product URL</a>
+         <p className="ad-muted">If the page remains unchanged, inspect the proxy response. It should contain the AI headline and benefits as JSON.</p>
+         <a href={d.proxyLink||"#"} target="_blank" rel="noopener noreferrer" className="am-text-link">Test Shopify App Proxy response</a>
+       </s-section>}
        <s-section><SectionHead title="Publishing status"/>
          <div className="am-detail-row"><span>Published theme</span><State text={check.status==="active"?"Active":check.status==="checking"?"Checking":check.status==="error"?"Unknown":"Not active"} kind={check.status==="active"?"success":"warning"}/></div>
          <div className="am-detail-row"><span>Merchant confirmation</span><State text={d.themeConfirmedAt?"Confirmed":"Pending"} kind={d.themeConfirmedAt?"success":"neutral"}/></div>
