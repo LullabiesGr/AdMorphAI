@@ -65,6 +65,10 @@ export default function MetaPage(){
     <s-paragraph>Remove the Meta connection, imported ad data and associated AI campaigns for this shop.</s-paragraph>
     <Form method="post"><input type="hidden" name="intent" value="disconnect"/><button className="ad-btn ghost" type="submit">Disconnect Meta and delete imported data</button></Form>
   </s-section>}
+  <s-section heading="Automatic setup">
+   <s-paragraph>After connecting, open Autopilot to import ads, match product destinations and generate content. A single available Meta ad account is selected automatically.</s-paragraph>
+   <s-button href="/app/autopilot">Open AI Autopilot</s-button>
+  </s-section>
   <s-section heading="Import scope"><s-paragraph>Imports the first 50 ads for the selected account. Does not modify campaigns, tracking parameters or Meta Pixel. Meta App Review may be required for third-party advertisers.</s-paragraph></s-section>
  </s-page>;
 }
