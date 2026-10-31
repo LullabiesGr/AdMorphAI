@@ -1,48 +1,71 @@
-import type { LoaderFunctionArgs } from "react-router";
-import { Link,useLoaderData } from "react-router";
+import type {LoaderFunctionArgs} from "react-router";
+import {Link,useLoaderData} from "react-router";
 import prisma from "../db.server";
-import { authenticate } from "../shopify.server";
+import {authenticate} from "../shopify.server";
+import {getMerchantOverview} from "../services/overview.server";
+import {PageIntro,Stat,State,SetupChecklist,SectionHead,Empty} from "../components/dashboard";
+
 export const loader=async({request}:LoaderFunctionArgs)=>{
  const {session}=await authenticate.admin(request);
  await prisma.shop.upsert({where:{domain:session.shop},create:{domain:session.shop},update:{}});
- const [meta,ads,total,published,settings]=await Promise.all([
-  prisma.metaConnection.findUnique({where:{shop:session.shop},select:{connectedAt:true,selectedAccountId:true}}),
-  prisma.metaAd.count({where:{shop:session.shop}}),
-  prisma.campaign.count({where:{shop:session.shop}}),
-  prisma.campaign.count({where:{shop:session.shop,status:"PUBLISHED"}}),
-  prisma.automationSetting.findUnique({where:{shop:session.shop},select:{autoPublish:true,lastSyncAt:true}})
- ]);
- return {shop:session.shop,meta:Boolean(meta),selected:Boolean(meta?.selectedAccountId),ads,total,published,settings};
+ return {shop:session.shop,...await getMerchantOverview(session.shop)};
 };
-export default function Dashboard(){
+export default function Overview(){
  const d=useLoaderData<typeof loader>();
- return <s-page heading="AdMorph AI">
-  <div className="ad-hero">
-   <div className="ad-chip">ADAPT EVERY AD. CONVERT EVERY VISIT.</div>
-   <h1>Turn Meta traffic into the right product experience.</h1>
-   <p>AdMorph reads your Meta creatives, identifies the Shopify product and generates relevant product-page messaging. No copy-pasting ads or manual product setup.</p>
-   <div className="auto-cta">
-     <Link to={d.meta?"/app/autopilot":"/app/meta"} className="ad-btn" style={{background:"#fff",color:"#17263f",textDecoration:"none",display:"inline-block"}}>{d.meta?"Run AI Autopilot":"Connect Meta Ads"}</Link>
-     <span>{d.meta?"Connected to Meta":"Connect once to get started"}</span>
+ return <s-page heading="Overview">
+  <s-button href="/app/autopilot" slot="primary-action" variant="primary">Run Autopilot</s-button>
+  <div className="am-container">
+   <PageIntro eyebrow="YOUR CONVERSION WORKSPACE" title="Your ads. A better shopping experience."
+      description="Keep your Meta campaigns, AI-generated content, and Shopify product experiences in sync.">
+      <State text={d.meta?"Meta connected":"Meta not connected"} kind={d.meta?"success":"warning"}/>
+   </PageIntro>
+   <div className="am-stats">
+     <Stat label="Meta advertising" value={d.meta?"Connected":"Not connected"}
+       note={d.meta?.selectedAccountId?"Ad account selected":"Connection setup"} tone={d.meta?"success":"warning"}/>
+     <Stat label="Imported ads" value={d.ads} note="From your connected Meta account"/>
+     <Stat label="Draft experiences" value={d.drafts} note="Waiting for approval"/>
+     <Stat label="Published experiences" value={d.published} note="Personalizations currently published" tone="success"/>
+   </div>
+   <div className="am-layout">
+     <div className="am-main-column">
+       <s-section>
+         <SectionHead title="Getting started" action={<Link to="/app/getting-started" className="am-text-link">View setup guide</Link>}/>
+         <div className="am-progress-heading"><strong>{d.completed} of {d.allSteps} steps completed</strong><span>{Math.round(d.completed/d.allSteps*100)}%</span></div>
+         <div className="am-progress-track" role="progressbar" aria-label="Onboarding progress" aria-valuemin={0} aria-valuemax={d.allSteps} aria-valuenow={d.completed}>
+           <div style={{width:(d.completed/d.allSteps*100)+"%"}}/>
+         </div>
+         <SetupChecklist steps={d.steps} compact/>
+       </s-section>
+       <s-section>
+         <SectionHead title="Recent campaigns" action={<Link to="/app/campaigns" className="am-text-link">All campaigns</Link>}/>
+         {d.recent.length===0?<Empty title="No campaigns yet" description="Run Autopilot to match ads with Shopify products and create your first draft." href="/app/autopilot" label="Open Autopilot"/>:
+           <div className="am-activity-list">{d.recent.map(c=><div key={c.id} className="am-activity-row">
+             <div><strong>{c.productTitle}</strong><small>Meta ad {c.metaAdId} · {new Date(c.updatedAt).toLocaleDateString("en-GB")}</small></div>
+             <State text={c.status==="PUBLISHED"?"Published":"Draft"} kind={c.status==="PUBLISHED"?"success":"warning"}/>
+           </div>)}</div>}
+       </s-section>
+     </div>
+     <aside className="am-side-column">
+       <s-section>
+         <SectionHead title="Quick actions"/>
+         <div className="am-action-links">
+           <Link to="/app/autopilot"><span>✦</span><strong>Generate AI content</strong><small>Match and draft Meta ads</small></Link>
+           <Link to="/app/theme"><span>▤</span><strong>Activate storefront</strong><small>Open your Theme Editor</small></Link>
+           <Link to="/app/campaigns"><span>✓</span><strong>Review drafts</strong><small>Check and publish copy</small></Link>
+         </div>
+       </s-section>
+       <s-section>
+         <SectionHead title="Workspace status"/>
+         <div className="am-detail-row"><span>Ad account</span><State text={d.meta?.selectedAccountId?"Selected":"Pending"} kind={d.meta?.selectedAccountId?"success":"warning"}/></div>
+         <div className="am-detail-row"><span>Theme block</span><State text={d.settings?.themeConfirmedAt?"Merchant confirmed":"Not confirmed"} kind={d.settings?.themeConfirmedAt?"success":"warning"}/></div>
+         <div className="am-detail-row"><span>Publishing mode</span><State text={d.settings?.autoPublish?"Automatic":"Review first"} kind={d.settings?.autoPublish?"info":"neutral"}/></div>
+         <div className="am-detail-row"><span>Last sync</span><strong>{d.settings?.lastSyncAt?new Date(d.settings.lastSyncAt).toLocaleDateString("en-GB"):"Not yet"}</strong></div>
+       </s-section>
+       <s-banner tone="info">
+         Ad click matching requires <code>admorph_ad=&#123;&#123;ad.id&#125;&#125;</code> in your Meta URL parameters. <Link to="/app/help">Learn how it works</Link>.
+       </s-banner>
+     </aside>
    </div>
   </div>
-  <div className="ad-grid">
-    <div className="ad-card"><div className="ad-muted">Connection</div><div className="ad-stat" style={{fontSize:21}}>{d.meta?"Meta connected":"Action needed"}</div><div className="ad-muted">{d.selected?"Ready for automatic processing":"Choose an ad account to continue"}</div></div>
-    <div className="ad-card"><div className="ad-muted">Imported advertisements</div><div className="ad-stat">{d.ads}</div><div className="ad-muted">Linked to your Meta ad account</div></div>
-    <div className="ad-card"><div className="ad-muted">Published experiences</div><div className="ad-stat">{d.published}<span style={{fontSize:16,color:"#8993a3"}}> / {d.total}</span></div><div className="ad-muted">{d.settings?.autoPublish?"Auto-publish is on":"Merchant approval enabled"}</div></div>
-  </div>
-  <s-section heading="One setup. Automated product copy.">
-   <div className="auto-steps">
-    <div className="auto-step"><strong>01 · Connect Meta</strong><span>Authorize read-only ad access</span></div>
-    <div className="auto-step"><strong>02 · AI Autopilot</strong><span>Match, generate, prepare</span></div>
-    <div className="auto-step"><strong>03 · Activate theme</strong><span>Save the product-page block</span></div>
-    <div className="auto-step"><strong>04 · Track results</strong><span>Ad-specific landing message</span></div>
-   </div>
-   <p className="ad-muted">AdMorph matches only active Meta ads with verifiable links to active products. Ambiguous links are left for review. Shopify requires the merchant to save the storefront block once.</p>
-   <p><Link to="/app/autopilot">Open Autopilot Studio</Link> · <Link to="/app/campaigns">Review AI Campaigns</Link></p>
-  </s-section>
-  <s-section heading="Important: ad tracking">
-   <s-paragraph>For exact visitor matching, Meta destination URLs must include <code>admorph_ad=&#123;&#123;ad.id&#125;&#125;</code>. The current Meta ads_read permission cannot edit ad URLs. This last setup step remains manual until ads_management is authorized.</s-paragraph>
-  </s-section>
  </s-page>;
 }
