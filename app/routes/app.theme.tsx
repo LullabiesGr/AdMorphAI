@@ -13,9 +13,13 @@ export const loader=async({request}:LoaderFunctionArgs)=>{
   prisma.campaign.findFirst({where:{shop:session.shop,status:"PUBLISHED"},orderBy:{updatedAt:"desc"},select:{productHandle:true,metaAdId:true,productTitle:true}})
  ]);
  const base="https://"+session.shop;
+ const autoEmbedEditor=new URL(base+"/admin/themes/current/editor");
+ autoEmbedEditor.searchParams.set("context","apps");
+ autoEmbedEditor.searchParams.set("template","product");
+ autoEmbedEditor.searchParams.set("activateAppId",(process.env.SHOPIFY_API_KEY||"")+"/admorph-autopilot");
  const testLink=testCampaign ? base+"/products/"+encodeURIComponent(testCampaign.productHandle)+"?admorph_ad="+encodeURIComponent(testCampaign.metaAdId) : null;
  const proxyLink=testCampaign ? base+"/apps/admorph?ad_id="+encodeURIComponent(testCampaign.metaAdId)+"&product_handle="+encodeURIComponent(testCampaign.productHandle) : null;
- return {themeConfirmedAt:setting?.themeConfirmedAt||null,published,editorUrl:themeEditorUrl(session.shop),inlineEditorUrl:themeEditorUrl(session.shop,"mainSection"),
+ return {themeConfirmedAt:setting?.themeConfirmedAt||null,published,editorUrl:themeEditorUrl(session.shop),inlineEditorUrl:themeEditorUrl(session.shop,"mainSection"),autoEmbedEditorUrl:autoEmbedEditor.toString(),
   testProduct:testCampaign?.productTitle||null,testLink,proxyLink};
 };
 export const action=async({request}:ActionFunctionArgs)=>{
@@ -45,7 +49,7 @@ export default function Theme(){
    try{
      const ext=await getShopifyExtensions();
      const themes=ext.filter(e=>e.type==="theme_app_extension");
-     const ours=themes.flatMap(e=>e.activations||[]).filter(x=>x.handle==="admorph-product");
+     const ours=themes.flatMap(e=>e.activations||[]).filter(x=>x.handle==="admorph-product"||x.handle==="admorph-autopilot");
      if(ours.some(x=>x.status==="active")){
        setCheck({status:"active",detail:"Shopify confirms the AdMorph personalization block is active in the published theme."});
      }else if(ours.some(x=>x.status==="available")){
@@ -84,7 +88,16 @@ export default function Theme(){
    <div className="am-layout">
      <div className="am-main-column">
        <s-section>
-        <SectionHead title="Activate in three steps"/>
+        <SectionHead title="Recommended: automatic placement" action={<State text="Works with custom themes" kind="info"/>}/>
+        <p className="ad-muted">Use the AdMorph Auto Placement app embed for themes such as MELD. It adds personalized copy to the product information automatically when visitors arrive from a matching Meta ad. No manual theme section placement is needed.</p>
+        <div className="am-guide-row"><span>01</span><div><strong>Enable the AdMorph Auto Placement app embed</strong><p>Open the published theme's App embeds panel. Enable AdMorph Auto Placement.</p></div></div>
+        <div className="am-guide-row"><span>02</span><div><strong>Choose where the AI copy appears</strong><p>Below product title, below Add to Cart, or below product description. Default is below product title.</p></div></div>
+        <div className="am-guide-row"><span>03</span><div><strong>Press Save in Shopify</strong><p>Then open the test product URL with <code>admorph_ad</code>. Without a matching ad ID, the normal product page stays unchanged.</p></div></div>
+        <a className="ad-btn am-standalone-action" href={d.autoEmbedEditorUrl} target="_top">Enable automatic product personalization</a>
+        <p className="ad-muted">If you already use the manual AdMorph block, the automatic integration detects it and avoids showing duplicate content.</p>
+       </s-section>
+       <s-section>
+        <SectionHead title="Alternative: position a manual app block"/>
         <div className="am-guide-row"><span>01</span><div><strong>Open the Shopify Theme Editor</strong><p>Use the button below. AdMorph will open the product template and request to add its app block.</p></div></div>
         <div className="am-guide-row"><span>02</span><div><strong>Place the personalization block</strong><p>Position AdMorph near the product description, benefits or Add to Cart area.</p></div></div>
         <div className="am-guide-row"><span>03</span><div><strong>Save the theme</strong><p>Press Save in Shopify. Return to AdMorph and confirm the setup below.</p></div></div>
