@@ -8,7 +8,7 @@ export const loader=async({request}:LoaderFunctionArgs)=>{
  const shop=session?.shop;
  const adId=url.searchParams.get("ad_id")||"";
  const handle=url.searchParams.get("product_handle")||"";
- const headers={"Content-Type":"application/json; charset=utf-8","Cache-Control":"public, max-age=30"};
+ const headers={"Content-Type":"application/json; charset=utf-8","Cache-Control":"no-store","X-Content-Type-Options":"nosniff"};
  if(!shop||!/^[0-9]{5,30}$/.test(adId)||!/^[a-z0-9][a-z0-9-]{0,250}$/.test(handle)){
   return new Response(JSON.stringify({content:null}),{headers});
  }
@@ -17,5 +17,6 @@ export const loader=async({request}:LoaderFunctionArgs)=>{
    orderBy:{updatedAt:"desc"},select:{content:true}
  });
  const parsed=variantSchema.safeParse(campaign?.content);
+ console.info("[AdMorph proxy] request handled",{shop,matched:parsed.success,hasAd:Boolean(adId),hasProduct:Boolean(handle)});
  return new Response(JSON.stringify({content:parsed.success?parsed.data:null}),{headers});
 };

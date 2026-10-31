@@ -204,3 +204,11 @@
 .am-autopilot-guidance code{overflow-wrap:anywhere}
 .am-autopilot-guidance .ad-btn{display:inline-flex;text-decoration:none;margin-top:2px}
 .auto-metrics{grid-template-columns:repeat(auto-fit,minmax(95px,1fr))}
+
+.am-theme-check{display:flex;align-items:center;justify-content:space-between;gap:22px;flex-wrap:wrap;padding:9px 2px}
+.am-theme-check-copy{display:flex;flex-direction:column;align-items:start;gap:10px;max-width:720px}
+.am-theme-check-copy>strong{font-size:15px;color:#26394e}
+.am-theme-check-copy p{font-size:13px;line-height:1.65;color:#637082;margin:0}
+.am-theme-check-state{display:inline-flex;border-radius:6px;padding:5px 9px;font-weight:700;font-size:12px;background:#f6eddd;color:#926414}
+.am-theme-check-state.am-success{background:#e6f3e9;color:#126c44}
+.am-theme-check-state.am-info{background:#eaf2fc;color:#3064a3}

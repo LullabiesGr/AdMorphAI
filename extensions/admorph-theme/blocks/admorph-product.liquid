@@ -1,5 +1,13 @@
 {% if product %}
-<div class="admorph-widget" data-product-handle="{{ product.handle | escape }}" aria-live="polite" hidden></div>
+  <div class="admorph-widget" data-product-handle="{{ product.handle | escape }}" aria-live="polite" {% unless request.design_mode %}hidden{% endunless %}>
+    {% if request.design_mode %}
+      <div class="admorph-editor-preview">
+        <strong>AdMorph AI personalization</strong>
+        <p>The block is installed in this product template. Save the theme to activate it.</p>
+        <p>On the storefront, published AI copy appears only with a matching <code>admorph_ad</code> URL parameter.</p>
+      </div>
+    {% endif %}
+  </div>
 {% endif %}
 {% schema %}
 {
