@@ -1,0 +1,26 @@
+name: Verify AdMorph AI
+on:
+  push:
+    branches: [main]
+  pull_request:
+jobs:
+  typecheck-and-build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      SHOPIFY_API_KEY: test_key
+      SHOPIFY_API_SECRET: test_secret
+      SHOPIFY_APP_URL: https://example.invalid
+      SCOPES: read_products,write_app_proxy
+      DATABASE_URL: postgresql://test:test@localhost:5432/admorph
+      DIRECT_URL: postgresql://test:test@localhost:5432/admorph
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: npm install --no-audit --no-fund
+      - run: npx prisma validate
+      - run: npx prisma generate
+      - run: npm run typecheck
+      - run: npm run build
