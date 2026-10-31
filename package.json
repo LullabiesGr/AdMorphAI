@@ -12,7 +12,7 @@
     "dev:web": "react-router dev",
     "config:link": "shopify app config link",
     "deploy": "shopify app deploy",
-    "setup": "prisma generate && prisma migrate resolve --applied 20261031130000_init && prisma migrate deploy",
+    "setup": "prisma generate && prisma migrate deploy",
     "db:generate": "prisma generate",
     "db:migrate": "prisma migrate dev",
     "db:deploy": "prisma migrate deploy",
