@@ -284,7 +284,7 @@ export const action=async({request}:ActionFunctionArgs)=>{
 type CampaignTab="all"|"live"|"review";
 export default function Campaigns(){
  const d=useLoaderData<typeof loader>();
- const action=useActionData<typeof action>();
+ const feedback=useActionData<typeof action>();
  const catalog=useFetcher<typeof action>();
  const productPreview=useFetcher<typeof action>();
  const artwork=useFetcher<typeof action>();
@@ -332,7 +332,7 @@ export default function Campaigns(){
    <div className="am-container am-simple-workspace">
      <PageIntro eyebrow="ADMORPH CONTENT STUDIO" title="Your AI product pages"
        description="Choose a Meta ad, see the page AI prepared, and publish it when you are happy with it."/>
-     {action&&<s-banner tone={action.ok?"success":"critical"}>{action.message}</s-banner>}
+     {feedback&&<s-banner tone={feedback.ok?"success":"critical"}>{feedback.message}</s-banner>}
      <div className="am-simple-steps" aria-label="How AdMorph works">
        <div><span>1</span><strong>Connect an ad</strong><small>Find its Shopify product</small></div>
        <div><span>2</span><strong>AI builds the page</strong><small>Preview the result</small></div>
@@ -538,7 +538,7 @@ export default function Campaigns(){
           <label>Actual Shopify product
            <select className="ad-input" name="productId" required disabled={!products.length}>
             <option value="">Select a product</option>
-            {products.map(p=><option key={p.id} value={p.id}>{p.title}</option>)}
+            {products.map((p:{id:string;title:string})=><option key={p.id} value={p.id}>{p.title}</option>)}
            </select></label>
           <button className="ad-btn" type="submit" disabled={!mappingAd||!products.length}>Connect ad to product</button>
         </Form>
