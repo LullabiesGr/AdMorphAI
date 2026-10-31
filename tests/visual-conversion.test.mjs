@@ -18,10 +18,14 @@ test("AI imagery is generated as decorative backdrop only",()=>{
  assert.match(source,/no garments, no people/i);
  assert.match(source,/output_format:"webp"/);
  assert.match(source,/gpt-image-2.5-flare/);
- const storefront=read("extensions/admorph-theme/assets/admorph.js");
+ const storefront=read("extensions/admorph-theme/assets/admorph-render.js");
  assert.ok(storefront.includes("admorph-ai-backdrop"));
  assert.ok(storefront.includes('data-product-image'));
  assert.ok(storefront.includes('admorph-visual-'));
+ const loader=read("extensions/admorph-theme/assets/admorph.js");
+ assert.ok(loader.includes("getRenderer(root)"));
+ assert.ok(Buffer.byteLength(loader,"utf8")<10000);
+ assert.ok(Buffer.byteLength(storefront,"utf8")<10000);
 });
 test("Experiment control does not show AI content and analytics respects privacy",()=>{
  const storefront=read("extensions/admorph-theme/assets/admorph.js");
