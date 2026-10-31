@@ -1,7 +1,7 @@
 import type { LoaderFunctionArgs } from "react-router";
 import prisma from "../db.server";
 import { authenticate } from "../shopify.server";
-import { variantSchema } from "../services/ai.server";
+import { variantSchema } from "../lib/variant";
 export const loader=async({request}:LoaderFunctionArgs)=>{
  const {session}=await authenticate.public.appProxy(request);
  const url=new URL(request.url);

@@ -3,7 +3,8 @@ import {Form,useActionData,useLoaderData} from "react-router";
 import prisma from "../db.server";
 import {authenticate} from "../shopify.server";
 import {listProducts,getProduct} from "../services/products.server";
-import {generateVariant,variantSchema} from "../services/ai.server";
+import {generateVariant} from "../services/ai.server";
+import {variantSchema} from "../lib/variant";
 import {metaCreativeCopy} from "../services/meta.server";
 export const loader=async({request}:LoaderFunctionArgs)=>{
  const {admin,session}=await authenticate.admin(request);
