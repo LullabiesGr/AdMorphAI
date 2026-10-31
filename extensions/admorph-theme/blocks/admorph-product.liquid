@@ -1,0 +1,12 @@
+{% if product %}
+<div class="admorph-widget" data-product-handle="{{ product.handle | escape }}" aria-live="polite" hidden></div>
+{% endif %}
+{% schema %}
+{
+  "name": "AdMorph personalization",
+  "target": "content",
+  "javascript": "admorph.js",
+  "stylesheet": "admorph.css",
+  "settings": []
+}
+{% endschema %}

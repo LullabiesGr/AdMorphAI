@@ -1,0 +1,6 @@
+.admorph-widget{padding:22px 24px;border-radius:12px;background:linear-gradient(135deg,#f7f9fd,#f2f5fb);border:1px solid #e6ebf4;color:#17263c;margin:14px 0;font-family:inherit}
+.admorph-widget[hidden]{display:none!important}
+.admorph-headline{font-family:inherit;margin:0 0 9px;font-size:clamp(1.35rem,2.2vw,1.8rem);line-height:1.18;font-weight:750;letter-spacing:-.025em}
+.admorph-subheadline{margin:0 0 12px;font-size:1rem;line-height:1.55}
+.admorph-benefits{list-style:disc;padding-left:20px;margin:0;line-height:1.6;font-size:.93rem}
+.admorph-benefits li{margin:4px 0}
