@@ -212,3 +212,27 @@
 .am-theme-check-state{display:inline-flex;border-radius:6px;padding:5px 9px;font-weight:700;font-size:12px;background:#f6eddd;color:#926414}
 .am-theme-check-state.am-success{background:#e6f3e9;color:#126c44}
 .am-theme-check-state.am-info{background:#eaf2fc;color:#3064a3}
+
+/* AI Experience 2.0 merchant preview */
+.am-experience-preview{max-width:800px;border:1px solid #dedfe3;border-radius:14px;overflow:hidden;margin:20px 0;background:#f3f0ea;color:#262625}
+.am-experience-banner{padding:28px;background:linear-gradient(140deg,#eae3d9,#f6f4f1)}
+.am-experience-banner h2{font-size:clamp(23px,3vw,34px);font-family:Georgia,serif;letter-spacing:-.8px;margin:8px 0}
+.am-experience-banner p{font-size:14px;line-height:1.6;margin:0 0 14px}
+.am-experience-eyebrow{display:block;font-size:10px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;opacity:.6;margin:0 0 13px}
+.am-experience-angle{display:inline-block;border:1px solid #c5baac;border-radius:20px;padding:6px 11px;font-size:11px}
+.am-experience-detail{padding:22px 23px}
+.am-experience-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:11px;margin:10px 0 25px}
+.am-experience-grid>div{padding:13px;background:rgba(255,255,255,.65);border-radius:9px;border:1px solid #e0dad0;min-width:0}
+.am-experience-grid small{display:block;font-size:10px;opacity:.6;margin-bottom:10px}
+.am-experience-grid strong{display:block;font-size:13px}
+.am-experience-grid p{font-size:12px;line-height:1.55;opacity:.8}
+.am-experience-footer{padding:21px 24px;background:#242a31;color:white}
+.am-experience-footer>strong{font-size:18px}
+.am-experience-footer p{font-size:13px;opacity:.75;line-height:1.6}
+.am-experience-footer>small{display:block;margin-top:11px;font-size:11px;opacity:.7}
+.am-experience-button{display:inline-block;background:white;color:#242a31;border-radius:7px;padding:11px 17px;font-size:12px;font-weight:750}
+.am-experience-preview-note{padding:10px 21px;color:#6a635e;font-size:11px;background:#f5f3ee;margin:0}
+.am-experience-minimal{border-radius:4px;background:#fafafa}.am-experience-bold .am-experience-banner{background:linear-gradient(140deg,#e5e0e9,#f0e9e2)}
+.am-experience-edit-group{display:grid;gap:12px;padding:15px;border:1px solid #e1e5eb;border-radius:8px}
+.am-experience-edit-group>strong{font-size:13px}
+@media(max-width:670px){.am-experience-grid{grid-template-columns:1fr}}

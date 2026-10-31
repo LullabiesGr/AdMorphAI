@@ -74,6 +74,7 @@ model Campaign {
   productTitle String
   status String @default("DRAFT")
   content Json?
+  draftContent Json?
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
   owner Shop @relation(fields:[shop],references:[domain],onDelete:Cascade)

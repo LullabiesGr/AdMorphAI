@@ -4,8 +4,10 @@ import {Form,Link,useActionData,useFetcher,useLoaderData} from "react-router";
 import prisma from "../db.server";
 import {authenticate} from "../shopify.server";
 import {listProducts,getProduct} from "../services/products.server";
-import {generateVariant} from "../services/ai.server";
+import {generateExperience} from "../services/ai.server";
+import {ExperiencePreview,ExperienceEditor} from "../components/experience-preview";
 import {variantSchema} from "../lib/variant";
+import {experienceSchema,campaignContentSchema,hasValidCampaignContent} from "../lib/experience";
 import {metaCreativeCopy} from "../services/meta.server";
 import {PageIntro,Stat,State,SectionHead,Empty} from "../components/dashboard";
 
@@ -59,7 +61,7 @@ export const action=async({request}:ActionFunctionArgs)=>{
       return {ok:true,message:`Deleted ${result.count} campaign(s).`};
     }
     if(intent==="bulk_publish"){
-      const valid=records.filter(c=>c.status==="DRAFT"&&variantSchema.safeParse(c.content).success).map(c=>c.id);
+      const valid=records.filter(c=>c.status==="DRAFT"&&hasValidCampaignContent(c.draftContent||c.content)).map(c=>c.id);
       const result=await prisma.campaign.updateMany({where:{shop,id:{in:valid}},data:{status:"PUBLISHED"}});
       return {ok:true,message:`Published ${result.count} valid draft(s). Drafts without AI content were skipped.`};
     }
@@ -79,8 +81,43 @@ export const action=async({request}:ActionFunctionArgs)=>{
     };
     const parsed=variantSchema.safeParse(proposed);
     if(!parsed.success)throw new Error("Invalid copy length or missing required fields.");
-    await prisma.campaign.update({where:{id},data:{content:parsed.data,status:"DRAFT"}});
+    if(campaign.status==="PUBLISHED"){
+      await prisma.campaign.update({where:{id},data:{draftContent:parsed.data}});
+      return {ok:true,message:"Edits saved for review. The published storefront experience is unchanged."};
+    }
+    await prisma.campaign.update({where:{id},data:{content:parsed.data,draftContent:null,status:"DRAFT"}});
     return {ok:true,message:"Changes saved as draft. Review before publishing."};
+  }
+  if(intent==="save_experience"){
+    const id=String(data.get("id")||"");
+    const campaign=await prisma.campaign.findFirst({where:{id,shop}});
+    if(!campaign)throw new Error("Campaign not found.");
+    const base=experienceSchema.safeParse(campaign.draftContent||campaign.content);
+    if(!base.success)throw new Error("Generate a 2.0 experience first.");
+    const string=(key:string)=>String(data.get(key)||"").trim();
+    const edited={
+      ...base.data,
+      angle:string("angle"),
+      layout:string("layout"),
+      hero:{eyebrow:string("eyebrow"),headline:string("headline"),subheadline:string("subheadline")},
+      highlights:base.data.highlights.map((_,i)=>({title:string("highlight"+i+"Title"),text:string("highlight"+i+"Text")})),
+      styleMoments:base.data.styleMoments.map((_,i)=>({label:string("moment"+i+"Label"),title:string("moment"+i+"Title"),text:string("moment"+i+"Text")})),
+      adConnection:{title:string("connectionTitle"),text:string("connectionText")},
+      cta:{primary:string("ctaPrimary"),secondary:string("ctaSecondary")}
+    };
+    const parsed=experienceSchema.safeParse(edited);
+    if(!parsed.success)throw new Error("Invalid experience: check the required text and limits.");
+    if(campaign.status==="PUBLISHED"){
+      await prisma.campaign.update({where:{id},data:{draftContent:parsed.data}});
+      return {ok:true,message:"Experience 2.0 saved for approval. Live content stays unchanged."};
+    }
+    await prisma.campaign.update({where:{id},data:{content:parsed.data,status:"DRAFT",draftContent:null}});
+    return {ok:true,message:"Experience 2.0 draft saved."};
+  }
+  if(intent==="discard_draft"){
+    const id=String(data.get("id")||"");
+    await prisma.campaign.updateMany({where:{id,shop,status:"PUBLISHED"},data:{draftContent:null}});
+    return {ok:true,message:"Pending changes discarded. Published content was not changed."};
   }
   if(["generate","publish","unpublish"].includes(intent)){
     const id=String(data.get("id")||"");
@@ -90,17 +127,26 @@ export const action=async({request}:ActionFunctionArgs)=>{
       const ad=await prisma.metaAd.findUnique({where:{shop_adId:{shop,adId:campaign.metaAdId}}});
       if(!ad)throw new Error("Meta ad missing. Re-import ads.");
       const product=await getProduct(admin,campaign.productId);
-      const content=await generateVariant({product,adCreative:ad.creative});
+      const content=await generateExperience({product,adCreative:ad.creative});
+      if(campaign.status==="PUBLISHED"){
+        await prisma.campaign.update({where:{id},data:{
+          productHandle:product.handle,productTitle:product.title,draftContent:content
+        }});
+        return {ok:true,message:"New AI Experience 2.0 staged. Existing published content remains live until you approve."};
+      }
       await prisma.campaign.update({where:{id},data:{
-        productHandle:product.handle,productTitle:product.title,content,status:"DRAFT"
+        productHandle:product.handle,productTitle:product.title,content,draftContent:null,status:"DRAFT"
       }});
-      return {ok:true,message:"Draft generated. Review the copy before publishing."};
+      return {ok:true,message:"Experience 2.0 generated. Preview and approve before publishing."};
     }
     if(intent==="publish"){
-      if(!variantSchema.safeParse(campaign.content).success)
-        throw new Error("Generate valid AI content before publishing.");
-      await prisma.campaign.update({where:{id},data:{status:"PUBLISHED"}});
-      return {ok:true,message:"Experience published."};
+      const nextContent=campaign.draftContent||campaign.content;
+      if(!hasValidCampaignContent(nextContent))
+        throw new Error("Generate a valid experience before publishing.");
+      await prisma.campaign.update({where:{id},data:{
+        status:"PUBLISHED",content:nextContent,draftContent:null
+      }});
+      return {ok:true,message:"Approved experience published."};
     }
     await prisma.campaign.update({where:{id},data:{status:"DRAFT"}});
     return {ok:true,message:"Experience unpublished."};
@@ -118,12 +164,12 @@ export default function Campaigns(){
  const [search,setSearch]=useState("");
  const [selected,setSelected]=useState<string[]>([]);
  const [expanded,setExpanded]=useState<string|null>(null);
- const draft=d.campaigns.filter(c=>c.status==="DRAFT"&&variantSchema.safeParse(c.content).success).length;
+ const draft=d.campaigns.filter(c=>c.status==="DRAFT"&&hasValidCampaignContent(c.draftContent||c.content)).length;
  const published=d.campaigns.filter(c=>c.status==="PUBLISHED").length;
- const pending=d.campaigns.filter(c=>!variantSchema.safeParse(c.content).success).length;
+ const pending=d.campaigns.filter(c=>!hasValidCampaignContent(c.draftContent||c.content)).length;
  const visible=useMemo(()=>d.campaigns.filter(c=>{
-    const valid=variantSchema.safeParse(c.content).success;
-    if(filter==="review"&&!(c.status==="DRAFT"&&valid))return false;
+    const valid=hasValidCampaignContent(c.draftContent||c.content);
+    if(filter==="review"&&!(c.status==="DRAFT"&&valid||c.draftContent&&valid))return false;
     if(filter==="published"&&c.status!=="PUBLISHED")return false;
     if(filter==="generate"&&valid)return false;
     const ad=d.ads.find(a=>a.id===c.metaAdId);
@@ -181,13 +227,13 @@ export default function Campaigns(){
           </tr></thead>
           <tbody>
            {visible.map(c=>{
-            const valid=variantSchema.safeParse(c.content);
+            const valid=campaignContentSchema.safeParse(c.draftContent||c.content);
             const ad=d.ads.find(ad=>ad.id===c.metaAdId);
             return <tr key={c.id}>
               <td><input type="checkbox" aria-label={"Select "+c.productTitle} checked={selected.includes(c.id)} onChange={e=>toggle(c.id,e.target.checked)}/></td>
               <td><strong>{ad?.name||"Ad "+c.metaAdId}</strong><small className="am-table-subtitle">{c.metaAdId}</small></td>
               <td>{c.productTitle}<small className="am-table-subtitle">/products/{c.productHandle}</small></td>
-              <td><State text={c.status==="PUBLISHED"?"Published":valid.success?"Review draft":"Needs generation"} kind={c.status==="PUBLISHED"?"success":valid.success?"warning":"neutral"}/></td>
+              <td><State text={c.draftContent?"Pending approval":c.status==="PUBLISHED"?"Published":valid.success?"Review draft":"Needs generation"} kind={c.draftContent?"warning":c.status==="PUBLISHED"?"success":valid.success?"warning":"neutral"}/></td>
               <td>{new Date(c.updatedAt).toLocaleDateString("en-GB")}</td>
               <td><button type="button" className="am-table-toggle" aria-expanded={expanded===c.id} onClick={()=>setExpanded(expanded===c.id?null:c.id)}>{expanded===c.id?"Close":"Open"}</button></td>
              </tr>;
@@ -203,22 +249,39 @@ export default function Campaigns(){
           return <div className="am-detail-panel">
             <div className="am-section-head"><h3>{c.productTitle}</h3><button type="button" className="am-table-toggle" onClick={()=>setExpanded(null)}>Close</button></div>
             <p className="ad-muted">Meta ad: {c.metaAdId}</p>
-            {valid.success&&<div className="ad-preview"><h3>{valid.data.headline}</h3><p>{valid.data.subheadline}</p><ul>{valid.data.benefits.map((b,i)=><li key={i}>{b}</li>)}</ul><small>CTA: {valid.data.cta}</small></div>}
-            {valid.success&&<details className="am-editor-details"><summary>Edit AI-generated copy</summary>
-              <Form method="post" className="am-edit-fields">
-               <input type="hidden" name="intent" value="save"/><input type="hidden" name="id" value={c.id}/>
-               <label>Headline<input name="headline" className="ad-input" maxLength={130} defaultValue={valid.data.headline} required/></label>
-               <label>Subheadline<textarea name="subheadline" className="ad-input" rows={3} maxLength={240} defaultValue={valid.data.subheadline} required/></label>
-               {valid.data.benefits.map((benefit,i)=><label key={i}>Benefit {i+1}<input name={"benefit"+(i+1)} className="ad-input" maxLength={150} defaultValue={benefit} required/></label>)}
-               <label>CTA<input name="cta" className="ad-input" maxLength={50} defaultValue={valid.data.cta} required/></label>
-               <button className="ad-btn" type="submit">Save as draft</button>
-              </Form>
-            </details>}
+            {c.draftContent&&<s-banner tone="info">This is an unpublished update. The existing experience remains live until you approve the draft.</s-banner>}
+            {valid.success && valid.data.version==="2.0" && <>
+              <ExperiencePreview content={valid.data}/>
+              <details className="am-editor-details"><summary>Edit Experience 2.0 content</summary>
+                <ExperienceEditor id={c.id} content={valid.data}/>
+              </details>
+            </>}
+            {valid.success && !("version" in valid.data) && <>
+              <div className="ad-preview"><h3>{valid.data.headline}</h3><p>{valid.data.subheadline}</p>
+                <ul>{valid.data.benefits.map((b,i)=><li key={i}>{b}</li>)}</ul>
+                <small>CTA: {valid.data.cta}</small>
+              </div>
+              <details className="am-editor-details"><summary>Edit legacy AI copy</summary>
+                <Form method="post" className="am-edit-fields">
+                  <input type="hidden" name="intent" value="save"/><input type="hidden" name="id" value={c.id}/>
+                  <label>Headline<input name="headline" className="ad-input" maxLength={130} defaultValue={valid.data.headline} required/></label>
+                  <label>Subheadline<textarea name="subheadline" className="ad-input" rows={3} maxLength={240} defaultValue={valid.data.subheadline} required/></label>
+                  {valid.data.benefits.map((benefit,i)=><label key={i}>Benefit {i+1}<input name={"benefit"+(i+1)} className="ad-input" maxLength={150} defaultValue={benefit} required/></label>)}
+                  <label>CTA<input name="cta" className="ad-input" maxLength={50} defaultValue={valid.data.cta} required/></label>
+                  <button className="ad-btn" type="submit">Save changes for review</button>
+                </Form>
+              </details>
+            </>}
             <div className="am-edit-actions">
               <Form method="post"><input type="hidden" name="intent" value="generate"/><input type="hidden" name="id" value={c.id}/>
-                <button type="submit" className="ad-btn ghost">{valid.success?"Regenerate draft":"Generate AI draft"}</button></Form>
-              {valid.success&&<Form method="post"><input type="hidden" name="intent" value={c.status==="PUBLISHED"?"unpublish":"publish"}/><input type="hidden" name="id" value={c.id}/>
-                <button type="submit" className="ad-btn">{c.status==="PUBLISHED"?"Unpublish":"Approve & publish"}</button></Form>}
+                <button type="submit" className="ad-btn ghost">{valid.success?"Generate Experience 2.0":"Generate first AI experience"}</button></Form>
+              {valid.success&&((c.status==="DRAFT")||Boolean(c.draftContent))&&<Form method="post">
+                 <input type="hidden" name="intent" value="publish"/><input type="hidden" name="id" value={c.id}/>
+                 <button type="submit" className="ad-btn">Approve & publish {valid.data.version==="2.0"?"Experience 2.0":"draft"}</button></Form>}
+              {c.status==="PUBLISHED"&&<Form method="post"><input type="hidden" name="intent" value="unpublish"/><input type="hidden" name="id" value={c.id}/>
+                <button type="submit" className="ad-btn ghost">Unpublish</button></Form>}
+              {c.draftContent&&<Form method="post"><input type="hidden" name="intent" value="discard_draft"/><input type="hidden" name="id" value={c.id}/>
+                <button type="submit" className="ad-btn ghost">Discard pending update</button></Form>}
             </div>
           </div>;
         })()}
