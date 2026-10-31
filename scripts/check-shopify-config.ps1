@@ -39,7 +39,35 @@ if($Config){
   if($good -notcontains $selected){
     throw "Selected $selected is not ready. Do not deploy. Review Shopify config."
   }
-  Write-Host "READY to deploy $selected. Use: shopify app deploy --config $selected" -ForegroundColor Green
+  if($selected -eq "shopify.app.toml") {
+    Write-Host "READY: $selected. Set this as the selected default with shopify app config use, then run shopify app config validate and shopify app deploy." -ForegroundColor Green
+  } else {
+    $key=$selected -replace '^shopify\.app\.', '' -replace '\.toml
+}elseif($good.Count -eq 1){
+  if($good[0] -eq "shopify.app.toml") {
+    Write-Host "One ready file: shopify.app.toml. Select it via shopify app config use, validate, then run shopify app deploy." -ForegroundColor Green
+  } else {
+    $key=$good[0] -replace '^shopify\.app\.', '' -replace '\.toml
+}else{
+  Write-Warning "Select the linked production file using -Config shopify.app.production.toml; deploy using its config name (for example --config production), not the filename."
+}
+, ''
+    Write-Host "READY: $selected. Use: shopify app config validate --config $key; shopify app deploy --config $key" -ForegroundColor Green
+  }
+}elseif($good.Count -eq 1){
+  Write-Host "One ready file: $($good[0]). Run: shopify app deploy --config $($good[0])" -ForegroundColor Green
+}else{
+  Write-Warning "Select the correct file with -Config shopify.app.production.toml. Do NOT deploy until it passes."
+}
+, ''
+    Write-Host "One ready file: $($good[0]). Run: shopify app config validate --config $key; shopify app deploy --config $key" -ForegroundColor Green
+  }
+}else{
+  Write-Warning "Select the correct file with -Config shopify.app.production.toml. Do NOT deploy until it passes."
+}
+, ''
+    Write-Host "READY: $selected. Use: shopify app config validate --config $key; shopify app deploy --config $key" -ForegroundColor Green
+  }
 }elseif($good.Count -eq 1){
   Write-Host "One ready file: $($good[0]). Run: shopify app deploy --config $($good[0])" -ForegroundColor Green
 }else{
