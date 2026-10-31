@@ -30,6 +30,21 @@ export const action=async({request}:ActionFunctionArgs)=>{
    });
    return {ok:true,message:"Campaign created. Generate its copy next."};
   }
+  if(intent==="save"){
+    const id=String(data.get("id")||"");
+    const campaign=await prisma.campaign.findFirst({where:{id,shop:session.shop}});
+    if(!campaign) throw new Error("Campaign not found");
+    const proposed={
+      headline:String(data.get("headline")||""),
+      subheadline:String(data.get("subheadline")||""),
+      benefits:[String(data.get("benefit1")||""),String(data.get("benefit2")||""),String(data.get("benefit3")||"")],
+      cta:String(data.get("cta")||""),
+    };
+    const parsed=variantSchema.safeParse(proposed);
+    if(!parsed.success) throw new Error("Invalid copy length or missing required fields");
+    await prisma.campaign.update({where:{id},data:{content:parsed.data,status:"DRAFT"}});
+    return {ok:true,message:"Copy saved as a draft. Review and publish when ready."};
+  }
   if(intent==="generate"||intent==="publish"||intent==="unpublish"){
    const id=String(data.get("id")||"");
    const campaign=await prisma.campaign.findFirst({where:{id,shop:session.shop}});
@@ -91,6 +106,19 @@ export default function Campaigns(){
        <ul>{content.data.benefits.map((b,i)=><li key={i}>{b}</li>)}</ul>
        <p className="ad-muted">CTA: {content.data.cta}</p>
       </div>}
+      {content.success&&<details style={{margin:"15px 0"}}>
+        <summary style={{cursor:"pointer",fontWeight:650}}>Edit generated copy</summary>
+        <Form method="post" style={{padding:"14px 0"}}>
+          <input type="hidden" name="intent" value="save"/><input type="hidden" name="id" value={c.id}/>
+          <label className="ad-label">Headline</label><input className="ad-input" name="headline" defaultValue={content.data.headline} maxLength={130} required/>
+          <label className="ad-label">Subheadline</label><textarea className="ad-input" name="subheadline" defaultValue={content.data.subheadline} maxLength={240} required rows={3}/>
+          {content.data.benefits.map((benefit,i)=><div key={i}>
+            <label className="ad-label">Benefit {i+1}</label><input className="ad-input" name={"benefit"+(i+1)} defaultValue={benefit} maxLength={150} required/>
+          </div>)}
+          <label className="ad-label">CTA</label><input className="ad-input" name="cta" defaultValue={content.data.cta} maxLength={50} required/>
+          <div style={{marginTop:13}}><button type="submit" className="ad-btn">Save changes</button></div>
+        </Form>
+      </details>}
       <div className="ad-row-actions">
        <Form method="post"><input type="hidden" name="intent" value="generate"/><input type="hidden" name="id" value={c.id}/><button className="ad-btn ghost" type="submit">{content.success?"Regenerate draft":"Generate AI draft"}</button></Form>
        {content.success&&<Form method="post"><input type="hidden" name="intent" value={c.status==="PUBLISHED"?"unpublish":"publish"}/><input type="hidden" name="id" value={c.id}/><button className="ad-btn" type="submit">{c.status==="PUBLISHED"?"Unpublish":"Approve & publish"}</button></Form>}
