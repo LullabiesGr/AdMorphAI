@@ -4,6 +4,7 @@ import {Form,useActionData,useFetcher,useLoaderData,useLocation} from "react-rou
 import prisma from "../db.server";
 import {authenticate} from "../shopify.server";
 import {startAutomation,runAutomationBatch,publishAllDrafts, type BatchStats} from "../services/automation.server";
+import {PageIntro,Stat,State,SectionHead} from "../components/dashboard";
 
 export const loader=async({request}:LoaderFunctionArgs)=>{
  const {session}=await authenticate.admin(request);
@@ -84,66 +85,80 @@ export default function Autopilot(){
    fetcher.submit({intent:"sync"},{method:"post"});
  }
  const accounts=(d.meta?.accounts||[]) as Array<{id:string,name:string}>;
- return <s-page heading="AdMorph Autopilot">
-  <div className="auto-banner">
-    <span className="auto-kicker">AD-TO-STOREFRONT AUTOMATION</span>
-    <h1>Launch relevant product experiences automatically.</h1>
-    <p>Import Meta ads, detect linked products, and generate AI versions in one run. You control when content goes live.</p>
-    <div className="auto-cta">
-      <button type="button" className="ad-btn auto-btn" disabled={!d.meta?.selectedAccountId||running} onClick={launch}>{running?"Autopilot working...":"Run AI Autopilot"}</button>
-      <span>{!d.meta?"Connect Meta first":!d.meta.selectedAccountId?"Choose your ad account":d.meta.selectedAccountId}</span>
-    </div>
-  </div>
-  <div className="auto-steps">
-   <div className="auto-step"><strong>01 · Connect</strong><span>{d.meta?"Meta connected":"Awaiting authorization"}</span></div>
-   <div className="auto-step"><strong>02 · Match</strong><span>Exact product destinations</span></div>
-   <div className="auto-step"><strong>03 · Generate</strong><span>OpenAI product-safe copy</span></div>
-   <div className="auto-step"><strong>04 · Publish</strong><span>Merchant-controlled</span></div>
-  </div>
-  {(message||hasFinished)&&<div className="auto-results" role="status">
-    <strong>{running?"Working through your ads":"Automation run"}</strong>
-    <p>{message}</p>
-    <div className="auto-metrics">
-    {([["processed","Processed"],["matched","Matched"],["generated","Generated"],["published","Published"],["unmatched","Needs mapping"],["failed","Errors"]] as const).map(([key,label])=><div key={key}><strong>{progress[key]}</strong><span>{label}</span></div>)}
-    </div>
-    {hasFinished&&<p className="ad-muted">Ads with non-product destinations, carousel links, or non-active status are not modified. See AI Campaigns for manual mapping.</p>}
-   </div>}
-  <div className="auto-panel-grid">
-    <div className="ad-card">
-      <div className="auto-section-title">Publication mode</div>
-      <p className="ad-muted">By default, generated content stays in Draft until you approve it. Auto-publish requires explicit consent.</p>
-      <Form method="post">
-       <input type="hidden" name="intent" value="setting"/>
-       <label className="auto-toggle"><input type="checkbox" name="autoPublish" defaultChecked={d.settings?.autoPublish||false}/> Automatically publish new AI variations</label>
-       <p className="ad-muted">Only enable this when you trust your product descriptions and accept responsibility for verifying marketing claims. Prices, discounts and checkout never change.</p>
-       <button type="submit" className="ad-btn ghost">Save publication mode</button>
+ return <s-page heading="Autopilot">
+  <s-button slot="primary-action" variant="primary" disabled={!d.meta?.selectedAccountId||running} onClick={launch}>
+    {running?"Processing Meta ads...":"Run Autopilot"}
+  </s-button>
+  <div className="am-container">
+   <PageIntro eyebrow="AUTOMATION ENGINE" title="From Meta ads to AI product experiences"
+     description="Import your ad creatives, find the linked Shopify products and generate storefront copy in one guided workflow.">
+     <State text={d.meta?.selectedAccountId?"Ad account connected":"Connect an ad account"} kind={d.meta?.selectedAccountId?"success":"warning"}/>
+   </PageIntro>
+   <div className="am-stats">
+     <Stat label="Imported Meta ads" value={d.ads} note="Across saved imports"/>
+     <Stat label="Draft experiences" value={d.drafts} note="Awaiting review"/>
+     <Stat label="Published experiences" value={d.published} note="Approved content" tone="success"/>
+     <Stat label="Publishing mode" value={d.settings?.autoPublish?"Automatic":"Review first"} note="Configured by merchant"/>
+   </div>
+   {!d.meta?.selectedAccountId&&<s-banner tone="warning">Select a Meta advertising account to run Autopilot. <a href="/app/meta">Go to Meta Ads</a>.</s-banner>}
+   <div className="am-layout">
+    <div className="am-main-column">
+     <s-section>
+      <SectionHead title="Run AI Autopilot" action={d.meta?.selectedAccountId?<State text="Ready" kind="success"/>:<State text="Setup needed" kind="warning"/>}/>
+      <p className="ad-muted">One run imports up to 50 Meta ads and automatically processes ads with verifiable product links. Existing valid drafts are kept unchanged.</p>
+      <div className="am-operation-list">
+       <div><span>01</span><strong>Read Meta ad creatives</strong><small>Read-only access to your selected ad account</small></div>
+       <div><span>02</span><strong>Match Shopify products</strong><small>Validate destination URLs against this store</small></div>
+       <div><span>03</span><strong>Generate AI product copy</strong><small>Create accurate draft headlines and benefits</small></div>
+       <div><span>04</span><strong>Publish when ready</strong><small>Review first unless auto-publish is enabled</small></div>
+      </div>
+      <div className="am-run-footer">
+       <button type="button" className="ad-btn" disabled={!d.meta?.selectedAccountId||running} onClick={launch}>
+         {running?"Running Autopilot...":"Run AI Autopilot"}
+       </button>
+       <a className="am-text-link" href="/app/meta">Manage ad account</a>
+      </div>
+     </s-section>
+     {(message||hasFinished)&&<s-section>
+        <div role="status" aria-live="polite">
+          <SectionHead title={running?"Autopilot in progress":hasFinished?"Run complete":"Run status"}/>
+          <p className="ad-muted">{message}</p>
+          <div className="auto-metrics">
+           {([["processed","Processed"],["matched","Matched"],["generated","Generated"],["published","Published"],["unmatched","Needs mapping"],["failed","Errors"]] as const).map(([key,label])=><div key={key}><strong>{progress[key]}</strong><span>{label}</span></div>)}
+          </div>
+          {hasFinished&&<p className="ad-muted">Collection destinations, ambiguous carousels and inactive ads are skipped. Use AI Campaigns for manual matching.</p>}
+        </div>
+     </s-section>}
+     <s-section>
+      <SectionHead title="Publish and review"/>
+      <p className="ad-muted">New AI content stays in draft mode by default. Review product claims before publication.</p>
+      <div className="am-detail-row"><span>Current mode</span><State text={d.settings?.autoPublish?"Auto publish enabled":"Manual review"} kind={d.settings?.autoPublish?"info":"neutral"}/></div>
+      <div className="am-run-footer">
+        <a className="ad-btn ghost" href="/app/settings">Publishing settings</a>
+        <a className="ad-btn ghost" href="/app/campaigns">Review campaigns</a>
+      </div>
+      <Form method="post" className="am-inline-form">
+       <input type="hidden" name="intent" value="publish_all"/>
+       <button type="submit" className="ad-btn" disabled={d.drafts===0}>Publish all valid drafts ({d.drafts})</button>
       </Form>
-      {a&&<p className="ad-muted" role="status">{a.message}</p>}
+      {a&&<s-banner tone={a.ok?"success":"critical"}>{a.message}</s-banner>}
+     </s-section>
     </div>
-    <div className="ad-card">
-      <div className="auto-section-title">Storefront activation</div>
-      <p className="ad-muted">Open your theme with the AdMorph block preselected. Shopify requires you to Save the theme once.</p>
-      <a className="ad-btn" style={{display:"inline-block",textDecoration:"none"}} href={d.themeUrl} target="_top">Add AdMorph to product pages</a>
-      <p className="ad-muted">Only visitors with a recognized Meta ad ID in their URL see published personalized copy.</p>
-    </div>
-  </div>
-  <div className="auto-panel-grid">
-    <div className="ad-card">
-      <div className="auto-section-title">Your content</div>
-      <div className="auto-summary-number">{d.ads} <span>imported ads</span></div>
-      <div className="auto-summary-number">{d.drafts} <span>draft variants</span></div>
-      <div className="auto-summary-number">{d.published} <span>published variants</span></div>
-      <Form method="post"><input type="hidden" name="intent" value="publish_all"/>
-      <button className="ad-btn ghost" type="submit" disabled={d.drafts===0}>Publish all valid drafts</button></Form>
-      <p className="ad-muted">For individual edits and approvals, open <a href="/app/campaigns">AI Campaigns</a>.</p>
-    </div>
-    <div className="ad-card">
-      <div className="auto-section-title">Meta account</div>
-      <p className="ad-muted">{d.meta?"Connected":"Not connected"} · {accounts.length} available account(s)</p>
-      <p className="ad-muted">The initial import handles up to 50 Meta ads per run. Active ads with directly linked Shopify products are eligible for auto-matching.</p>
-      <a href="/app/meta" className="ad-btn ghost" style={{display:"inline-block",textDecoration:"none"}}>{d.meta?"Manage Meta connection":"Connect Meta Ads"}</a>
-      <p className="ad-muted">Current permission is ads_read. Tracking URLs cannot be edited automatically until Meta approves ads_management.</p>
-    </div>
+    <aside className="am-side-column">
+      <s-section>
+       <SectionHead title="Selected ad account"/>
+       <p className="ad-muted">{d.meta?.selectedAccountId||"Not selected"}</p>
+       <p className="ad-muted">{((d.meta?.accounts||[]) as Array<{id:string,name:string}>).length} available accounts</p>
+       <a className="ad-btn ghost am-standalone-action" href="/app/meta">Manage Meta Ads</a>
+      </s-section>
+      <s-section>
+       <SectionHead title="Storefront setup"/>
+       <p className="ad-muted">Add the AdMorph product block through Shopify Theme Editor and save once. Only matching published campaigns are shown.</p>
+       <a className="ad-btn am-standalone-action" href="/app/theme">Theme activation guide</a>
+      </s-section>
+      <s-banner tone="info">AdMorph can import Meta ads, but <code>ads_read</code> cannot change campaign URLs. Add the <code>admorph_ad</code> parameter in Meta Ads Manager for visitor matching.</s-banner>
+    </aside>
+   </div>
   </div>
  </s-page>;
 }
