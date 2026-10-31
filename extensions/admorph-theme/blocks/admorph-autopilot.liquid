@@ -2,6 +2,8 @@
   <div
     class="admorph-widget admorph-auto-slot"
     data-product-handle="{{ product.handle | escape }}"
+    data-product-image="{% if product.featured_image %}{{ product.featured_image | image_url: width: 1200 | escape }}{% endif %}"
+    data-product-image-alt="{{ product.featured_image.alt | default: product.title | escape }}"
     data-admorph-placement="{{ block.settings.placement | escape }}"
     aria-live="polite"
     hidden

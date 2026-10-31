@@ -46,3 +46,177 @@
 }
 .admorph-widget .admorph-editor-preview strong { display: block; font-size: 14px; }
 .admorph-widget .admorph-editor-preview p { margin: 8px 0 0; }
+/* AdMorph AI Experience 2.0: inherits the merchant's product-page color system. */
+.admorph-widget:has(.admorph-experience) {
+  --admorph-ink: var(--color-foreground, currentColor);
+  --admorph-line: rgba(75,75,75,.17);
+  border: 0;
+  padding: 0;
+  margin: 22px 0 32px;
+  width: 100%;
+  color: inherit;
+}
+.admorph-widget .admorph-experience,
+.admorph-widget .admorph-experience * {
+  box-sizing: border-box;
+}
+.admorph-widget .admorph-experience {
+  overflow: hidden;
+  width: 100%;
+  font-family: inherit;
+  text-align: left;
+  color: inherit;
+  border-radius: 16px;
+  background: #f5f2ec;
+  border: 1px solid #e8e2d8;
+  box-shadow: 0 10px 36px rgba(20, 22, 28, .055);
+}
+.admorph-widget .admorph-experience-hero {
+  display: grid;
+  grid-template-columns: minmax(0,1fr) minmax(0,1.22fr);
+  min-height: 195px;
+  align-items: stretch;
+}
+.admorph-widget .admorph-experience-image {
+  min-width: 0;
+  min-height: 175px;
+  background: #e4ded4;
+}
+.admorph-widget .admorph-experience-image img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  min-height: 175px;
+  max-height: 390px;
+  object-fit: cover;
+  object-position: center;
+}
+.admorph-widget .admorph-experience-copy {
+  min-width: 0;
+  padding: clamp(18px, 3vw, 32px);
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
+.admorph-widget .admorph-experience-eyebrow,
+.admorph-widget .admorph-experience-kicker {
+  display: block;
+  margin: 0 0 13px;
+  font-family: inherit;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: .16em;
+  text-transform: uppercase;
+  opacity: .65;
+}
+.admorph-widget .admorph-experience-headline {
+  font-family: inherit;
+  font-size: clamp(21px, 2.65vw, 34px);
+  font-weight: 600;
+  line-height: 1.08;
+  letter-spacing: -.035em;
+  color: inherit;
+  margin: 0 0 15px;
+  padding: 0;
+  overflow-wrap: anywhere;
+}
+.admorph-widget .admorph-experience-intro {
+  font: inherit;
+  font-size: 13px;
+  line-height: 1.6;
+  margin: 0;
+  color: inherit;
+  opacity: .8;
+}
+.admorph-widget .admorph-experience-highlights,
+.admorph-widget .admorph-experience-moments {
+  padding: 22px clamp(18px, 3vw, 30px);
+}
+.admorph-widget .admorph-experience-highlights { background: rgba(255,255,255,.5); }
+.admorph-widget .admorph-experience-highlight-grid,
+.admorph-widget .admorph-experience-moment-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0,1fr));
+  gap: 11px;
+}
+.admorph-widget .admorph-experience-highlight,
+.admorph-widget .admorph-experience-moment {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  gap: 8px;
+  background: rgba(255,255,255,.55);
+  border: 1px solid var(--admorph-line);
+  padding: 14px 12px;
+  border-radius: 10px;
+}
+.admorph-widget .admorph-experience-counter {
+  font-size: 10px;
+  font-weight: 650;
+  opacity: .52;
+}
+.admorph-widget .admorph-experience-small-title,
+.admorph-widget .admorph-experience-connection-title {
+  font: inherit;
+  font-weight: 650;
+  color: inherit;
+  line-height: 1.3;
+  font-size: 13px;
+  margin: 0;
+}
+.admorph-widget .admorph-experience-card-text {
+  font: inherit;
+  color: inherit;
+  line-height: 1.5;
+  font-size: 12px;
+  opacity: .78;
+  margin: 0;
+}
+.admorph-widget .admorph-experience-moment-label {
+  text-transform: uppercase;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: .09em;
+  opacity: .58;
+}
+.admorph-widget .admorph-experience-connection {
+  background: #212529;
+  color: #fff;
+  padding: 23px clamp(18px, 3vw, 30px) 26px;
+}
+.admorph-widget .admorph-experience-connection-title { font-size: 20px; }
+.admorph-widget .admorph-experience-connection .admorph-experience-card-text { margin-top: 10px; }
+.admorph-widget .admorph-experience-cta {
+  display: inline-flex;
+  border: 1px solid transparent;
+  background: #fff;
+  color: #1f2427;
+  font: inherit;
+  font-size: 12px;
+  font-weight: 750;
+  margin: 17px 0 0;
+  padding: 11px 17px;
+  border-radius: 7px;
+  line-height: 1.2;
+  cursor: pointer;
+  max-width: 100%;
+}
+.admorph-widget .admorph-experience-cta:hover { background: #e9e9e8; }
+.admorph-widget .admorph-experience-cta:focus-visible { outline: 3px solid #9cc3ff; outline-offset: 3px; }
+.admorph-widget .admorph-experience-cta-note { display: block; color: #fff; opacity: .72; margin-top: 12px; font-size: 11px; }
+.admorph-widget .admorph-theme-bold .admorph-experience-copy { background: #ede8e4; }
+.admorph-widget .admorph-theme-bold .admorph-experience-connection { background: #353a46; }
+.admorph-widget .admorph-theme-minimal { border-radius: 6px; background: #fafafa; border-color: #dedede; }
+.admorph-widget .admorph-theme-minimal .admorph-experience-highlight,
+.admorph-widget .admorph-theme-minimal .admorph-experience-moment { border-radius: 4px; }
+@media (max-width: 900px) {
+  .admorph-widget .admorph-experience-hero { grid-template-columns: minmax(0,1fr); }
+  .admorph-widget .admorph-experience-image { max-height: 265px; }
+  .admorph-widget .admorph-experience-image img { max-height: 265px; }
+  .admorph-widget .admorph-experience-copy { padding: 20px; }
+  .admorph-widget .admorph-experience-highlight-grid,
+  .admorph-widget .admorph-experience-moment-grid { grid-template-columns: repeat(1,minmax(0,1fr)); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .admorph-widget .admorph-experience * { scroll-behavior: auto !important; }
+}
