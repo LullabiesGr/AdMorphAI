@@ -258,3 +258,35 @@
 .am-ad-creative-comparison>div{flex:1;min-width:0}
 .am-ad-creative-comparison small{display:block;color:#7a8596;font-size:11px;line-height:1.5;margin-top:9px}
 @media(max-width:640px){.am-ad-creative-comparison{flex-wrap:wrap}}
+
+/* Merchant-side AI Visual Studio preview */
+.am-experience-preview[class*="am-preview-palette-"]{color:var(--preview-ink);background:var(--preview-bg);border-color:var(--preview-line)}
+.am-preview-palette-sand{--preview-bg:#f5f2ec;--preview-light:#fbf9f4;--preview-dark:#242a31;--preview-line:#d9d1c5;--preview-ink:#282520}
+.am-preview-palette-slate{--preview-bg:#e7eef2;--preview-light:#f5f8fa;--preview-dark:#243647;--preview-line:#cfdce5;--preview-ink:#243647}
+.am-preview-palette-rose{--preview-bg:#f6e8e9;--preview-light:#fff7f6;--preview-dark:#57303a;--preview-line:#ead1d4;--preview-ink:#50323b}
+.am-preview-palette-sage{--preview-bg:#e9eee7;--preview-light:#f5f8f2;--preview-dark:#2d4433;--preview-line:#d0dccc;--preview-ink:#2b4031}
+.am-preview-palette-midnight{--preview-bg:#dfe5eb;--preview-light:#f5f7fa;--preview-dark:#161f33;--preview-line:#c7d0db;--preview-ink:#202a3d}
+.am-experience-preview[class*="am-preview-palette-"] .am-experience-banner{background:var(--preview-bg)}
+.am-experience-preview[class*="am-preview-palette-"] .am-experience-grid>div{background:var(--preview-light);border-color:var(--preview-line)}
+.am-experience-preview[class*="am-preview-palette-"] .am-experience-footer{background:var(--preview-dark)}
+.am-preview-fit-contain .am-experience-product-image img{object-fit:contain}
+.am-preview-visual-gallery .am-experience-hero-row,
+.am-preview-visual-spotlight .am-experience-hero-row{display:flex;flex-direction:column}
+.am-preview-visual-gallery .am-experience-product-image,
+.am-preview-visual-spotlight .am-experience-product-image{order:0;max-height:340px}
+.am-preview-visual-gallery .am-experience-product-image img,
+.am-preview-visual-spotlight .am-experience-product-image img{height:285px;max-height:340px}
+.am-preview-visual-gallery .am-experience-banner{order:1}
+.am-preview-visual-spotlight .am-experience-banner{
+ order:1;position:relative;max-width:88%;width:100%;margin:-35px auto 20px;
+ box-shadow:0 6px 25px rgba(0,0,0,.09);border-radius:10px
+}
+.am-preview-visual-spotlight .am-experience-hero-row:not(:has(.am-experience-product-image)) .am-experience-banner{
+ max-width:none;margin:0;box-shadow:none
+}
+.am-experience-preview-note p{margin:6px 0;font-size:12px;line-height:1.6}
+.am-visual-controls{width:100%;display:grid;gap:12px;padding:18px;border:1px solid #d8dce2;border-radius:9px}
+.am-visual-controls legend{font-size:15px;font-weight:700;padding:0 6px}
+.am-visual-controls label{display:flex;flex-direction:column;gap:7px;font-size:12px;font-weight:600}
+.am-visual-controls select,.am-visual-controls input{width:100%;max-width:100%}
+@media(max-width:620px){.am-preview-visual-spotlight .am-experience-banner{max-width:95%;margin:-20px auto 14px}}

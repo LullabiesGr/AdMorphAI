@@ -1,8 +1,11 @@
 import {Form} from "react-router";
-import type {Experience} from "../lib/experience";
+import {resolveVisualDirection,type Experience} from "../lib/experience";
 
 export function ExperiencePreview({content:c,productImageUrl,productImageAlt}:{content:Experience;productImageUrl?:string;productImageAlt?:string}){
- return <div className={"am-experience-preview am-experience-"+c.layout}>
+ const visual=resolveVisualDirection(c);
+ return <div className={"am-experience-preview am-experience-"+c.layout+
+    " am-preview-visual-"+visual.composition+" am-preview-palette-"+visual.palette+
+    " am-preview-fit-"+visual.imageFit}>
    <div className="am-experience-hero-row">
    <div className="am-experience-banner">
      <span className="am-experience-eyebrow">{c.hero.eyebrow}</span>
@@ -29,7 +32,11 @@ export function ExperiencePreview({content:c,productImageUrl,productImageAlt}:{c
      <span className="am-experience-button">{c.cta.primary}</span>
      {c.cta.secondary&&<small>{c.cta.secondary}</small>}
    </div>
-   <p className="am-experience-preview-note">Merchant preview of AI copy. Storefront image uses the real Shopify product featured image. Review all claims before publishing.</p>
+   <div className="am-experience-preview-note">
+    <strong>AI art direction: {visual.mood}</strong>
+    <p>{visual.rationale}</p>
+    <small>Layout: {visual.composition} · Palette: {visual.palette} · Image: {visual.imageFit}. Only the original Shopify product photo is used. Changes require approval.</small>
+   </div>
  </div>;
 }
 export function ExperienceEditor({id,content:c}:{id:string;content:Experience}){
@@ -39,6 +46,21 @@ export function ExperienceEditor({id,content:c}:{id:string;content:Experience}){
    <input type="hidden" name="intent" value="save_experience"/>
    <input type="hidden" name="id" value={id}/>
    {input("angle","Ad angle",c.angle,90)}
+   <fieldset className="am-visual-controls">
+    <legend>AI Visual Studio</legend>
+    <p className="ad-muted">Visual art direction changes the storefront layout and palette. It never alters the original Shopify product photo.</p>
+    <label>Hero composition<select name="visualComposition" className="ad-input" defaultValue={resolveVisualDirection(c).composition}>
+      <option value="split">Split hero</option><option value="spotlight">Image spotlight</option><option value="gallery">Gallery editorial</option>
+    </select></label>
+    <label>Color palette<select name="visualPalette" className="ad-input" defaultValue={resolveVisualDirection(c).palette}>
+      <option value="sand">Warm sand</option><option value="slate">Cool slate</option><option value="rose">Soft rose</option><option value="sage">Sage green</option><option value="midnight">Midnight blue</option>
+    </select></label>
+    <label>Product photo display<select name="visualImageFit" className="ad-input" defaultValue={resolveVisualDirection(c).imageFit}>
+      <option value="cover">Editorial crop</option><option value="contain">Show full product</option>
+    </select></label>
+    {input("visualMood","Art direction mood",resolveVisualDirection(c).mood,65)}
+    {input("visualRationale","Why this matches the Meta creative",resolveVisualDirection(c).rationale,200)}
+   </fieldset>
    <label>Experience layout<select name="layout" defaultValue={c.layout} className="ad-input">
       <option value="editorial">Editorial</option><option value="minimal">Minimal</option><option value="bold">Bold</option>
    </select></label>

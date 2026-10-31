@@ -220,3 +220,64 @@
 @media (prefers-reduced-motion: reduce) {
   .admorph-widget .admorph-experience * { scroll-behavior: auto !important; }
 }
+
+/* AI Visual Studio - predefined art directions; original Shopify photography only */
+.admorph-widget .admorph-palette-sand{--av-bg:#f5f2ec;--av-light:#fbf9f4;--av-border:#e8e2d8;--av-dark:#212529;--av-ink:#282520}
+.admorph-widget .admorph-palette-slate{--av-bg:#e7eef2;--av-light:#f5f8fa;--av-border:#cfdce5;--av-dark:#243647;--av-ink:#243647}
+.admorph-widget .admorph-palette-rose{--av-bg:#f6e8e9;--av-light:#fff7f6;--av-border:#ead1d4;--av-dark:#57303a;--av-ink:#50323b}
+.admorph-widget .admorph-palette-sage{--av-bg:#e9eee7;--av-light:#f5f8f2;--av-border:#d0dccc;--av-dark:#2d4433;--av-ink:#2b4031}
+.admorph-widget .admorph-palette-midnight{--av-bg:#dfe5eb;--av-light:#f5f7fa;--av-border:#c7d0db;--av-dark:#161f33;--av-ink:#202a3d}
+.admorph-widget .admorph-experience[class*="admorph-palette-"]{
+ background:var(--av-bg);border-color:var(--av-border);color:var(--av-ink)
+}
+.admorph-widget .admorph-experience[class*="admorph-palette-"] .admorph-experience-highlights{
+ background:var(--av-light)
+}
+.admorph-widget .admorph-experience[class*="admorph-palette-"] .admorph-experience-highlight,
+.admorph-widget .admorph-experience[class*="admorph-palette-"] .admorph-experience-moment{
+ border-color:var(--av-border)
+}
+.admorph-widget .admorph-experience[class*="admorph-palette-"] .admorph-experience-connection{
+ background:var(--av-dark);color:#fff
+}
+.admorph-widget .admorph-fit-contain .admorph-experience-image img{
+ object-fit:contain;background:var(--av-light)
+}
+.admorph-widget .admorph-visual-gallery .admorph-experience-hero{
+ display:flex;flex-direction:column
+}
+.admorph-widget .admorph-visual-gallery .admorph-experience-image{
+ order:0;width:100%;max-height:335px
+}
+.admorph-widget .admorph-visual-gallery .admorph-experience-image img{
+ height:300px;max-height:335px
+}
+.admorph-widget .admorph-visual-gallery .admorph-experience-copy{
+ order:1;max-width:760px;padding:27px clamp(20px,4vw,38px)
+}
+.admorph-widget .admorph-visual-spotlight .admorph-experience-hero{
+ display:flex;flex-direction:column;min-height:0
+}
+.admorph-widget .admorph-visual-spotlight .admorph-experience-image{
+ order:0;width:100%;max-height:330px
+}
+.admorph-widget .admorph-visual-spotlight .admorph-experience-image img{
+ height:320px;max-height:330px
+}
+.admorph-widget .admorph-visual-spotlight .admorph-experience-copy{
+ order:1;position:relative;max-width:88%;margin:-48px auto 22px;
+ padding:23px 26px;background:var(--av-light);color:var(--av-ink);
+ box-shadow:0 10px 30px rgba(0,0,0,.08);border-radius:10px
+}
+.admorph-widget .admorph-visual-spotlight .admorph-experience-no-image .admorph-experience-copy{
+ margin:0;max-width:none;box-shadow:none
+}
+@media(max-width:650px){
+ .admorph-widget .admorph-visual-spotlight .admorph-experience-copy{
+   max-width:94%;margin:-25px auto 18px;padding:19px
+ }
+ .admorph-widget .admorph-visual-gallery .admorph-experience-image img,
+ .admorph-widget .admorph-visual-spotlight .admorph-experience-image img{
+   height:225px
+ }
+}

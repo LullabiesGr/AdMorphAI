@@ -76,7 +76,14 @@
   // Images are sourced from the actual Shopify product, never AI-invented merchandise.
   function renderExperience(root, c) {
     var frame = document.createElement("div");
-    frame.className = "admorph-experience admorph-theme-" + c.layout;
+    var visual=c.visual || {};
+    var compositions=["split","spotlight","gallery"];
+    var palettes=["sand","slate","rose","sage","midnight"];
+    var composition=compositions.indexOf(visual.composition)!==-1 ? visual.composition : "split";
+    var palette=palettes.indexOf(visual.palette)!==-1 ? visual.palette : "sand";
+    var imageFit=visual.imageFit==="contain" ? "contain" : "cover";
+    frame.className = "admorph-experience admorph-theme-" + c.layout +
+      " admorph-visual-" + composition+" admorph-palette-"+palette+" admorph-fit-"+imageFit;
 
     var hero = document.createElement("section");
     hero.className = "admorph-experience-hero";
