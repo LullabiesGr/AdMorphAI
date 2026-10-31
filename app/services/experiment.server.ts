@@ -25,9 +25,9 @@ export function parseEventToken(token:unknown):Token|null{
   return value;
  }catch{return null;}
 }
-export async function recordEvent(token:unknown,kind:unknown,key:unknown):Promise<boolean>{
+export async function recordEvent(token:unknown,kind:unknown,key:unknown,expectedShop?:string):Promise<boolean>{
  const parsed=parseEventToken(token);
- if(!parsed||!["view","cta","cart","purchase"].includes(String(kind)))return false;
+ if(!parsed||expectedShop&&parsed.shop!==expectedShop||!["view","cta","cart","purchase"].includes(String(kind)))return false;
  if(typeof key!=="string"||!/^[a-zA-Z0-9_:-]{10,130}$/.test(key))return false;
  const campaign=await prisma.campaign.findFirst({
   where:{id:parsed.id,shop:parsed.shop,status:"PUBLISHED"},
