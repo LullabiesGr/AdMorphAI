@@ -85,6 +85,7 @@ model AutomationSetting {
   shop String @id
   autoPublish Boolean @default(false)
   lastSyncAt DateTime?
+  themeConfirmedAt DateTime?
   lastResult Json?
   updatedAt DateTime @updatedAt
   owner Shop @relation(fields:[shop],references:[domain],onDelete:Cascade)
