@@ -11,6 +11,7 @@ import {variantSchema} from "../lib/variant";
 import {experienceSchema,campaignContentSchema,hasValidCampaignContent,isExperience} from "../lib/experience";
 import {metaCreativeCopy} from "../services/meta.server";
 import {PageIntro,Stat,State,SectionHead,Empty} from "../components/dashboard";
+import {selectPreviewContent,groupByImportedAd} from "../lib/campaign-preview";
 
 export const loader=async({request}:LoaderFunctionArgs)=>{
  // Do not load Shopify products on page entry. Admin GraphQL can require session
@@ -70,11 +71,11 @@ export const action=async({request}:ActionFunctionArgs)=>{
       return {ok:true,message:`Deleted ${result.count} campaign(s).`};
     }
     if(intent==="bulk_publish"){
-      const valid=records.filter(c=>(c.status==="DRAFT"||Boolean(c.draftContent))&&hasValidCampaignContent(c.draftContent||c.content));
+      const valid=records.filter(c=>(c.status==="DRAFT"||Boolean(c.draftContent))&&hasValidCampaignContent(selectPreviewContent(c)));
       await prisma.$transaction(valid.map(c=>prisma.campaign.update({
         where:{id:c.id},data:{
           status:"PUBLISHED",
-          content:campaignContentSchema.parse(c.draftContent||c.content),
+          content:campaignContentSchema.parse(selectPreviewContent(c)),
           draftContent:Prisma.DbNull
         }
       })));
@@ -181,10 +182,9 @@ export default function Campaigns(){
  const [selected,setSelected]=useState<string[]>([]);
  const [expanded,setExpanded]=useState<string|null>(null);
  const [manualAdId,setManualAdId]=useState("");
- const adInventory=useMemo(()=>d.ads.map(ad=>{
-    const linked=d.campaigns.filter(c=>c.metaAdId===ad.id);
-    return {...ad,linked,hasAI:linked.some(c=>hasValidCampaignContent(c.draftContent||c.content))};
- }),[d.ads,d.campaigns]);
+ const adInventory=useMemo(()=>groupByImportedAd(d.ads,d.campaigns).map(ad=>({
+   ...ad,hasAI:ad.linked.some(c=>hasValidCampaignContent(selectPreviewContent(c)))
+ })),[d.ads,d.campaigns]);
  const unmatchedAds=adInventory.filter(ad=>!ad.linked.length);
  function openExperience(id:string){
    setExpanded(id);
@@ -197,11 +197,11 @@ export default function Campaigns(){
    setManualAdId(adId);
    document.getElementById("manual-ad-match")?.scrollIntoView({behavior:"smooth",block:"start"});
  }
- const draft=d.campaigns.filter(c=>(c.status==="DRAFT"||Boolean(c.draftContent))&&hasValidCampaignContent(c.draftContent||c.content)).length;
+ const draft=d.campaigns.filter(c=>(c.status==="DRAFT"||Boolean(c.draftContent))&&hasValidCampaignContent(selectPreviewContent(c))).length;
  const published=d.campaigns.filter(c=>c.status==="PUBLISHED").length;
- const pending=d.campaigns.filter(c=>!hasValidCampaignContent(c.draftContent||c.content)).length;
+ const pending=d.campaigns.filter(c=>!hasValidCampaignContent(selectPreviewContent(c))).length;
  const visible=useMemo(()=>d.campaigns.filter(c=>{
-    const valid=hasValidCampaignContent(c.draftContent||c.content);
+    const valid=hasValidCampaignContent(selectPreviewContent(c));
     if(filter==="review"&&!(c.status==="DRAFT"&&valid||c.draftContent&&valid))return false;
     if(filter==="published"&&c.status!=="PUBLISHED")return false;
     if(filter==="generate"&&valid)return false;
@@ -262,7 +262,7 @@ export default function Campaigns(){
           </tr></thead>
           <tbody>
            {visible.map(c=>{
-            const valid=campaignContentSchema.safeParse(c.draftContent||c.content);
+            const valid=campaignContentSchema.safeParse(selectPreviewContent(c));
             const ad=d.ads.find(ad=>ad.id===c.metaAdId);
             return <tr key={c.id}>
               <td><input type="checkbox" aria-label={"Select "+c.productTitle} checked={selected.includes(c.id)} onChange={e=>toggle(c.id,e.target.checked)}/></td>
@@ -282,7 +282,7 @@ export default function Campaigns(){
           if(!c)return null;
           // A v2 content object does not satisfy the legacy variant schema.
           // Prefer a pending merchant draft but keep the published version available.
-          const valid=campaignContentSchema.safeParse(c.draftContent||c.content);
+          const valid=campaignContentSchema.safeParse(selectPreviewContent(c));
           const publishedContent=campaignContentSchema.safeParse(c.content);
           const originAd=d.ads.find(ad=>ad.id===c.metaAdId);
           return <div className="am-detail-panel">
@@ -354,7 +354,7 @@ export default function Campaigns(){
            <td>{ad.linked.length? <span>{ad.linked.length} linked campaign{ad.linked.length===1?"":"s"}{ad.hasAI?" · AI generated":" · Awaiting generation"}</span> :
              <State text="Not matched to Shopify" kind="warning"/>}</td>
            <td><div className="am-inline-actions">
-             {ad.linked.map(c=><button key={c.id} type="button" className="am-table-toggle" onClick={()=>openExperience(c.id)}>{hasValidCampaignContent(c.draftContent||c.content)?"View AI experience":"Open campaign"}</button>)}
+             {ad.linked.map(c=><button key={c.id} type="button" className="am-table-toggle" onClick={()=>openExperience(c.id)}>{hasValidCampaignContent(selectPreviewContent(c))?"View AI experience":"Open campaign"}</button>)}
              <button type="button" className="am-table-toggle" onClick={()=>chooseAdForMapping(ad.id)}>Match to product</button>
            </div></td>
         </tr>)}</tbody>
