@@ -19,7 +19,7 @@ jobs:
       - name: Validate PowerShell script syntax
         shell: pwsh
         run: |
-          $paths = @('scripts/check-shopify-config.ps1', 'scripts/repair-shopify-app-proxy.ps1')
+          $paths = @('scripts/check-shopify-config.ps1', 'scripts/repair-shopify-app-proxy.ps1', 'scripts/enable-experiments.ps1')
           foreach ($path in $paths) {
             $tokens = $null
             $parseErrors = $null
