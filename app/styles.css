@@ -236,3 +236,12 @@
 .am-experience-edit-group{display:grid;gap:12px;padding:15px;border:1px solid #e1e5eb;border-radius:8px}
 .am-experience-edit-group>strong{font-size:13px}
 @media(max-width:670px){.am-experience-grid{grid-template-columns:1fr}}
+
+/* Meta advertising inventory and campaign preview context */
+.am-ad-source{border:1px solid #e5e8ef;background:#f9fafb;border-radius:10px;padding:15px;margin:14px 0}
+.am-ad-source>strong{display:block;font-size:12px;color:#344053;margin-bottom:8px}
+.am-ad-source>p{font-size:12px;color:#566274;line-height:1.65;margin:4px 0;overflow-wrap:anywhere}
+.am-inline-actions{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.am-inline-actions .am-table-toggle{white-space:normal}
+#campaign-library,#manual-ad-match{scroll-margin-top:75px}
+.am-detail-panel>.am-text-link{display:inline-block;margin:7px 0 15px;font-weight:650;font-size:13px}
