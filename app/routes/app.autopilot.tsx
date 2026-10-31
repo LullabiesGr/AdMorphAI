@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import type {ActionFunctionArgs,LoaderFunctionArgs} from "react-router";
-import {Form,useActionData,useFetcher,useLoaderData} from "react-router";
+import {Form,useActionData,useFetcher,useLoaderData,useLocation} from "react-router";
 import prisma from "../db.server";
 import {authenticate} from "../shopify.server";
 import {startAutomation,runAutomationBatch,publishAllDrafts, type BatchStats} from "../services/automation.server";
@@ -47,6 +47,8 @@ export const action=async({request}:ActionFunctionArgs)=>{
 const blank=():BatchStats=>({processed:0,matched:0,generated:0,published:0,existing:0,unmatched:0,inactive:0,failed:0});
 export default function Autopilot(){
  const d=useLoaderData<typeof loader>(),a=useActionData<typeof action>();
+ const location=useLocation();
+ const startedAfterConnect=useRef(false);
  const fetcher=useFetcher<typeof action>();
  const [running,setRunning]=useState(false);
  const [progress,setProgress]=useState<BatchStats>(blank);
@@ -69,6 +71,13 @@ export default function Autopilot(){
      setRunning(false);setHasFinished(true);
    }
  },[fetcher.data,fetcher.state,running]);
+ useEffect(()=>{
+   if(startedAfterConnect.current||!d.meta?.selectedAccountId)return;
+   if(new URLSearchParams(location.search).get("run")==="1"){
+     startedAfterConnect.current=true;
+     launch();
+   }
+ },[location.search,d.meta?.selectedAccountId]);
  function launch(){
    setProgress(blank());setMessage("Importing your latest Meta ads...");setHasFinished(false);
    lastHandled.current=null;setRunning(true);
