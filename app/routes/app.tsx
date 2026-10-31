@@ -1,5 +1,5 @@
 import type { HeadersFunction, LoaderFunctionArgs } from "react-router";
-import { Outlet, useLoaderData, useRouteError } from "react-router";
+import { Link, Outlet, useLoaderData, useRouteError } from "react-router";
 import { boundary } from "@shopify/shopify-app-react-router/server";
 import { AppProvider } from "@shopify/shopify-app-react-router/react";
 import { authenticate } from "../shopify.server";
@@ -11,11 +11,11 @@ export const loader=async({request}:LoaderFunctionArgs)=>{
 export default function App(){
  const {apiKey}=useLoaderData<typeof loader>();
  return <AppProvider apiKey={apiKey}>
-  <s-app-nav>
-   <s-link href="/app">Overview</s-link>
-   <s-link href="/app/meta">Meta Ads</s-link>
-   <s-link href="/app/campaigns">AI Campaigns</s-link>
-  </s-app-nav>
+  <nav className="ad-topnav" aria-label="AdMorph navigation">
+   <Link to="/app">Overview</Link>
+   <Link to="/app/meta">Meta Ads</Link>
+   <Link to="/app/campaigns">AI Campaigns</Link>
+  </nav>
   <Outlet/>
  </AppProvider>;
 }
