@@ -5,10 +5,10 @@ import {Form,Link,useActionData,useFetcher,useLoaderData} from "react-router";
 import prisma from "../db.server";
 import {authenticate} from "../shopify.server";
 import {listProducts,getProduct} from "../services/products.server";
-import {generateExperience} from "../services/ai.server";
+import {generateExperience,generateVisualDirection} from "../services/ai.server";
 import {ExperiencePreview,ExperienceEditor} from "../components/experience-preview";
 import {variantSchema} from "../lib/variant";
-import {experienceSchema,campaignContentSchema,hasValidCampaignContent,isExperience} from "../lib/experience";
+import {experienceSchema,visualDirectionSchema,campaignContentSchema,hasValidCampaignContent,isExperience,resolveVisualDirection} from "../lib/experience";
 import {metaCreativeCopy} from "../services/meta.server";
 import {PageIntro,Stat,State,SectionHead,Empty} from "../components/dashboard";
 import {selectPreviewContent,groupByImportedAd} from "../lib/campaign-preview";
@@ -115,6 +115,13 @@ export const action=async({request}:ActionFunctionArgs)=>{
       ...base.data,
       angle:string("angle"),
       layout:string("layout"),
+      visual:{
+        composition:string("visualComposition"),
+        palette:string("visualPalette"),
+        imageFit:string("visualImageFit"),
+        mood:string("visualMood"),
+        rationale:string("visualRationale")
+      },
       hero:{eyebrow:string("eyebrow"),headline:string("headline"),subheadline:string("subheadline")},
       highlights:base.data.highlights.map((_,i)=>({title:string("highlight"+i+"Title"),text:string("highlight"+i+"Text")})),
       styleMoments:base.data.styleMoments.map((_,i)=>({label:string("moment"+i+"Label"),title:string("moment"+i+"Title"),text:string("moment"+i+"Text")})),
@@ -129,6 +136,24 @@ export const action=async({request}:ActionFunctionArgs)=>{
     }
     await prisma.campaign.update({where:{id},data:{content:parsed.data,status:"DRAFT",draftContent:Prisma.DbNull}});
     return {ok:true,message:"Experience 2.0 draft saved."};
+  }
+  if(intent==="generate_visual"){
+    const id=String(data.get("id")||"");
+    const campaign=await prisma.campaign.findFirst({where:{id,shop}});
+    if(!campaign)throw new Error("Campaign not found.");
+    const existing=experienceSchema.safeParse(campaign.draftContent||campaign.content);
+    if(!existing.success)throw new Error("Generate Experience 2.0 first.");
+    const ad=await prisma.metaAd.findUnique({where:{shop_adId:{shop,adId:campaign.metaAdId}}});
+    if(!ad)throw new Error("Meta ad missing. Re-import the ad before generating visual direction.");
+    const product=await getProduct(admin,campaign.productId);
+    const visual=await generateVisualDirection({product,adCreative:ad.creative,experience:existing.data});
+    const updated=experienceSchema.parse({...existing.data,visual});
+    if(campaign.status==="PUBLISHED"){
+      await prisma.campaign.update({where:{id:campaign.id},data:{draftContent:updated}});
+      return {ok:true,message:"AI visual direction generated as pending draft. The published storefront is unchanged."};
+    }
+    await prisma.campaign.update({where:{id:campaign.id},data:{content:updated,draftContent:Prisma.DbNull,status:"DRAFT"}});
+    return {ok:true,message:"AI visual direction generated. Review and approve before publishing."};
   }
   if(intent==="discard_draft"){
     const id=String(data.get("id")||"");
@@ -336,6 +361,11 @@ export default function Campaigns(){
             <div className="am-edit-actions">
               <Form method="post"><input type="hidden" name="intent" value="generate"/><input type="hidden" name="id" value={c.id}/>
                 <button type="submit" className="ad-btn ghost">{valid.success?"Generate Experience 2.0":"Generate first AI experience"}</button></Form>
+              {valid.success&&isExperience(valid.data)&&<Form method="post">
+                <input type="hidden" name="intent" value="generate_visual"/>
+                <input type="hidden" name="id" value={c.id}/>
+                <button type="submit" className="ad-btn ghost">AI Suggest New Visual Direction</button>
+              </Form>
               {valid.success&&((c.status==="DRAFT")||Boolean(c.draftContent))&&<Form method="post">
                  <input type="hidden" name="intent" value="publish"/><input type="hidden" name="id" value={c.id}/>
                  <button type="submit" className="ad-btn">Approve & publish {isExperience(valid.data)?"Experience 2.0":"draft"}</button></Form>}
