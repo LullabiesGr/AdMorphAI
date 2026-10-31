@@ -288,7 +288,16 @@ export default function Campaigns(){
           return <div className="am-detail-panel">
             <div className="am-section-head"><h3>{c.productTitle}</h3><button type="button" className="am-table-toggle" onClick={()=>setExpanded(null)}>Close</button></div>
             <p className="ad-muted">Meta ad: {c.metaAdId}{originAd?.name?" · "+originAd.name:""}</p>
-            {originAd&&<div className="am-ad-source"><strong>Source Meta creative</strong><p>{originAd.creative.headline||originAd.creative.body||"No ad copy supplied by Meta."}</p>{originAd.creative.headline&&originAd.creative.body&&<p>{originAd.creative.body}</p>}</div>}
+            {originAd&&<div className="am-ad-source">
+              <strong>Source Meta creative</strong>
+              <div className="am-ad-creative-comparison">
+                {originAd.creative.imageUrl.startsWith("https://")&&<img src={originAd.creative.imageUrl} alt="Original Meta ad creative" loading="lazy"/>}
+                <div><p>{originAd.creative.headline||originAd.creative.body||"No ad copy supplied by Meta."}</p>
+                  {originAd.creative.headline&&originAd.creative.body&&<p>{originAd.creative.body}</p>}
+                  <small>Compare the source creative above with the generated experience below. Verify that both refer to the actual Shopify product.</small>
+                </div>
+              </div>
+            </div>}
             {c.status==="PUBLISHED"&&<a className="am-text-link" target="_blank" rel="noopener noreferrer" href={`https://${d.shop}/products/${encodeURIComponent(c.productHandle)}?admorph_ad=${encodeURIComponent(c.metaAdId)}`}>View published product experience</a>}
             {c.draftContent&&publishedContent.success&&<details className="am-editor-details">
               <summary>View current live experience (before pending changes)</summary>
