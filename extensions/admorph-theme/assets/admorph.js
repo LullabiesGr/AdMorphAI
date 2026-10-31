@@ -74,7 +74,35 @@
   }
   // V2: build a premium ad-matched experience entirely with safe DOM methods.
   // Images are sourced from the actual Shopify product, never AI-invented merchandise.
-  function renderExperience(root, c) {
+  function analyticsConsent(){
+    try{
+      return Boolean(window.Shopify && window.Shopify.customerPrivacy &&
+        typeof window.Shopify.customerPrivacy.analyticsProcessingAllowed==="function" &&
+        window.Shopify.customerPrivacy.analyticsProcessingAllowed());
+    }catch(_){return false;}
+  }
+  function publishPixelEvent(name, token){
+    if(!token)return;
+    try{
+      if(window.Shopify && window.Shopify.analytics && typeof window.Shopify.analytics.publish==="function"){
+        window.Shopify.analytics.publish(name,{token:token});
+      }
+    }catch(_){/* Analytics must never affect storefront rendering. */}
+  }
+  function assignment(id,experiment){
+    if(!experiment || !experiment.enabled || !analyticsConsent())return {arm:"B",token:null};
+    var value;
+    try{
+      var key="admorph_experiment_"+id;
+      value=window.sessionStorage.getItem(key);
+      if(value!=="A"&&value!=="B"){
+        value=Math.random()<.5?"A":"B";
+        window.sessionStorage.setItem(key,value);
+      }
+    }catch(_){value=Math.random()<.5?"A":"B";}
+    return {arm:value,token:experiment.tokens && experiment.tokens[value]};
+  }
+  function renderExperience(root, c, hasImage, adId, token) {
     var frame = document.createElement("div");
     var visual=c.visual || {};
     var compositions=["split","spotlight","gallery"];
@@ -108,6 +136,16 @@
       hero.appendChild(imageWrap);
     } else {
       hero.classList.add("admorph-experience-no-image");
+    }
+    if(hasImage){
+      var backdrop=document.createElement("img");
+      backdrop.className="admorph-ai-backdrop";
+      backdrop.alt="";
+      backdrop.setAttribute("aria-hidden","true");
+      backdrop.loading="lazy";
+      backdrop.src="/apps/admorph?image=1&ad_id="+encodeURIComponent(adId)+
+        "&product_handle="+encodeURIComponent(root.getAttribute("data-product-handle"));
+      copy.insertBefore(backdrop,copy.firstChild);
     }
     hero.appendChild(copy);
     frame.appendChild(hero);
@@ -155,6 +193,7 @@
     button.className = "admorph-experience-cta";
     button.textContent = c.cta.primary;
     button.addEventListener("click", function () {
+      publishPixelEvent("admorph:experiment_cta",token);
       var buy = findFirst([
         'main form[action*="/cart/add"] button[type="submit"]',
         "main product-form button[type=submit]",
@@ -181,13 +220,13 @@
     root.setAttribute("data-admorph-version", "2.0");
   }
 
-  function render(root, content) {
+  function render(root, content, hasImage, adId, token) {
     if (content.version === "2.0" && content.hero &&
         Array.isArray(content.highlights) && content.highlights.length === 3 &&
         Array.isArray(content.styleMoments) && content.styleMoments.length === 3 &&
         content.adConnection && content.cta &&
         ["editorial","minimal","bold"].indexOf(content.layout) !== -1) {
-      renderExperience(root, content);
+      renderExperience(root, content, hasImage, adId, token);
       return;
     }
     var heading = textNode("h2", content.headline, "admorph-headline");
@@ -227,7 +266,17 @@
         if (content.version === "2.0" ? (!content.hero || !Array.isArray(content.highlights) || !Array.isArray(content.styleMoments)) : (typeof content.headline !== "string" || !Array.isArray(content.benefits))) {
           throw Error("Unexpected AdMorph response");
         }
-        render(root, content);
+        var group=assignment(id,result.experiment);
+        root.dataset.admorphArm=group.arm;
+        if(result.experiment && result.experiment.enabled && group.token){
+          publishPixelEvent("admorph:experiment_exposure",group.token);
+        }
+        if(group.arm==="A"){
+          root.hidden=true;
+          root.setAttribute("data-admorph-state","control");
+          return;
+        }
+        render(root, content,Boolean(result.imageAvailable),id,group.token);
       })
       .catch(function (error) {
         delete root.dataset.admorphLoaded; // Allow retry on section reload.

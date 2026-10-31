@@ -1,0 +1,17 @@
+type = "web_pixel_extension"
+name = "AdMorph Conversion Pixel"
+runtime_context = "strict"
+
+[customer_privacy]
+analytics = true
+marketing = false
+preferences = false
+sale_of_data = "disabled"
+
+[settings]
+type = "object"
+
+[settings.fields.shop]
+name = "Shop domain"
+description = "Verified Shopify store hostname"
+type = "single_line_text_field"
