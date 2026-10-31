@@ -4,6 +4,7 @@ import {readFileSync} from "node:fs";
 import vm from "node:vm";
 const script=readFileSync(new URL("../extensions/admorph-theme/assets/admorph.js",import.meta.url),"utf8");
 const liquid=readFileSync(new URL("../extensions/admorph-theme/blocks/admorph-autopilot.liquid",import.meta.url),"utf8");
+const rendererScript=readFileSync(new URL("../extensions/admorph-theme/assets/admorph-render.js",import.meta.url),"utf8");
 
 function mockElement(tag){
  return {tagName:tag.toUpperCase(),children:[],textContent:"",className:"",
@@ -17,15 +18,23 @@ async function runStorefront({query="",withManual=false,v2=false,visual=null}={}
  const requestUrls=[];
  const makeRoot=(automatic)=>({
     classList:{contains(name){return automatic&&name==="admorph-auto-slot";}},
-    getAttribute(name){return name==="data-product-handle"?"city-line-trench":name==="data-admorph-placement"?"after_title":name==="data-product-image"?"https://cdn.shopify.com/s/files/test.jpg":name==="data-product-image-alt"?"City Line Trench":null;},
+    getAttribute(name){return name==="data-admorph-renderer-url"?"https://cdn.shopify.com/extensions/admorph-render.js":name==="data-product-handle"?"city-line-trench":name==="data-admorph-placement"?"after_title":name==="data-product-image"?"https://cdn.shopify.com/s/files/test.jpg":name==="data-product-image-alt"?"City Line Trench":null;},
     dataset:{},hidden:true,isConnected:true,previousElementSibling:null,
     replaceChildren(...items){this.nodes=items;},
     setAttribute(name,value){this[name]=value;}
  });
  const auto=makeRoot(true),manual=withManual?makeRoot(false):null;
  const anchor={parentNode:{},insertAdjacentElement(position,element){element.movedAfterTitle=position==="afterend";}};
+ let ctx;
  const document={
    readyState:"complete",
+   head:{appendChild(script){
+     setImmediate(()=>{
+       vm.runInContext(rendererScript,ctx);
+       if(typeof script.onload==="function")script.onload();
+     });
+     return script;
+   }},
    querySelector(selector){return selector==="main h1"?anchor:null;},
    querySelectorAll(selector){
      if(selector===".admorph-widget")return manual?[manual,auto]:[auto];
@@ -47,8 +56,9 @@ async function runStorefront({query="",withManual=false,v2=false,visual=null}={}
  }: {headline:"City Line Trench: Effortless Urban Style",
     subheadline:"Layer up",benefits:["Fluid silhouette","All-season look"]};
  const fetch=async url=>{requestUrls.push(url);return{ok:true,json:async()=>({content})};};
- vm.runInNewContext(script,{window,document,fetch,console,URLSearchParams});
- await new Promise(resolve=>setImmediate(resolve));
+ ctx=vm.createContext({window,document,fetch,console,URLSearchParams});
+ vm.runInContext(script,ctx);
+ await new Promise(resolve=>setTimeout(resolve,15));
  return {auto,manual,requestUrls,events};
 }
 test("theme embed registers with the correct Shopify app target",()=>{
@@ -115,4 +125,14 @@ test("unknown visual values safely fall back to predefined neutral layout",async
  const result=await runStorefront({query:"?admorph_ad=120255890044740602",v2:true,
   visual:{composition:"unexpected",palette:"transparent",imageFit:"stretch"}});
  assert.ok(result.auto.nodes[0].className.includes("admorph-visual-split admorph-palette-sand admorph-fit-cover"));
+});
+
+test("theme app loader and renderer are both under Shopify's 10KB suggested JS limit",()=>{
+ const {statSync}=requireSize();
+ function requireSize(){return {statSync:(p)=>({size:readFileSync(p).byteLength})};}
+ const pathA=new URL("../extensions/admorph-theme/assets/admorph.js",import.meta.url);
+ const pathB=new URL("../extensions/admorph-theme/assets/admorph-render.js",import.meta.url);
+ assert.ok(statSync(pathA).size<10000);
+ assert.ok(statSync(pathB).size<10000);
+ assert.match(liquid,/data-admorph-renderer-url/);
 });

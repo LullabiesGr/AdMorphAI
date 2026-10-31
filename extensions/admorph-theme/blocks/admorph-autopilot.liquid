@@ -1,6 +1,7 @@
 {% if request.page_type == 'product' and product %}
   <div
     class="admorph-widget admorph-auto-slot"
+    data-admorph-renderer-url="{{ 'admorph-render.js' | asset_url }}"
     data-product-handle="{{ product.handle | escape }}"
     data-product-image="{% if product.featured_image %}{{ product.featured_image | image_url: width: 1200 | escape }}{% endif %}"
     data-product-image-alt="{{ product.featured_image.alt | default: product.title | escape }}"
