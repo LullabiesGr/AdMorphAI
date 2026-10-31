@@ -196,3 +196,11 @@
 .am-operation-list small{display:block;color:#697481;font-size:12px;margin-top:5px}
 .am-run-footer{display:flex;align-items:center;gap:15px;flex-wrap:wrap;margin-top:20px}
 .am-run-footer>a.ad-btn{display:inline-flex;text-decoration:none}
+
+/* Explain no-match runs without incorrectly signaling successful AI generation. */
+.am-autopilot-guidance{border:1px solid #e5d7ae;background:#fffbf0;border-radius:11px;padding:19px;margin-top:18px;font-size:13px;line-height:1.6}
+.am-autopilot-guidance>strong{display:block;color:#4e3914;font-size:14px;margin:0 0 7px}
+.am-autopilot-guidance p{color:#675532;margin:0 0 15px}
+.am-autopilot-guidance code{overflow-wrap:anywhere}
+.am-autopilot-guidance .ad-btn{display:inline-flex;text-decoration:none;margin-top:2px}
+.auto-metrics{grid-template-columns:repeat(auto-fit,minmax(95px,1fr))}
