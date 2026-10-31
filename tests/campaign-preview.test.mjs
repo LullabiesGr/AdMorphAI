@@ -25,3 +25,24 @@ test("every imported Meta ad stays visible even without a linked campaign",()=>{
  assert.equal(grouped[1].linked.length,0);
  assert.equal(grouped[2].linked.length,0);
 });
+
+test("legacy V2 experience without visual design settings remains valid",async()=>{
+ const {experienceSchema,resolveVisualDirection}=await import("../app/lib/experience.ts");
+ const experience={
+  version:"2.0",angle:"Urban layers",layout:"editorial",
+  hero:{eyebrow:"The edit",headline:"Style meets the city",subheadline:"A full-length city-ready layer"},
+  highlights:Array.from({length:3},(_,i)=>({title:"Detail "+i,text:"A grounded verified point "+i})),
+  styleMoments:Array.from({length:3},(_,i)=>({label:"Moment "+i,title:"Idea "+i,text:"A suggested moment of use "+i})),
+  adConnection:{title:"Continue the story",text:"Explore the style that brought you here."},
+  cta:{primary:"Shop this product",secondary:""}
+ };
+ assert.equal(experienceSchema.safeParse(experience).success,true);
+ assert.equal(resolveVisualDirection(experience).composition,"split");
+});
+test("visual direction allows only supported safe design presets",async()=>{
+ const {visualDirectionSchema}=await import("../app/lib/experience.ts");
+ const good={composition:"gallery",palette:"rose",imageFit:"contain",
+ mood:"Soft editorial",rationale:"Echo the ad creative while keeping the real Shopify product photo."};
+ assert.equal(visualDirectionSchema.safeParse(good).success,true);
+ assert.equal(visualDirectionSchema.safeParse({...good,palette:"evil-css"}).success,false);
+});

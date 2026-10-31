@@ -12,7 +12,7 @@ function mockElement(tag){
     replaceChildren(...children){this.children=children;},
     setAttribute(name,value){this[name]=value;}};
 }
-async function runStorefront({query="",withManual=false,v2=false}={}){
+async function runStorefront({query="",withManual=false,v2=false,visual=null}={}){
  const events={};
  const requestUrls=[];
  const makeRoot=(automatic)=>({
@@ -38,7 +38,7 @@ async function runStorefront({query="",withManual=false,v2=false}={}){
  };
  const window={Shopify:{designMode:false},location:{search:query},addEventListener(name,callback){events[name]=callback;}};
  const content=v2?{
-    version:"2.0",angle:"Urban layers",layout:"editorial",
+    version:"2.0",angle:"Urban layers",layout:"editorial",...(visual?{visual}:{}),
     hero:{eyebrow:"The new edit",headline:"Style meets the city",subheadline:"A concise introductory editorial line"},
     highlights:Array.from({length:3},(_,i)=>({title:"Detail "+i,text:"A distinct product detail "+i})),
     styleMoments:Array.from({length:3},(_,i)=>({label:"Look "+i,title:"Idea "+i,text:"Styling suggestion "+i})),
@@ -81,7 +81,8 @@ test("V2 renders structured editorial sections with real product image",async()=
  assert.equal(result.requestUrls.length,1);
  assert.equal(result.auto.hidden,false);
  const root=result.auto.nodes[0];
- assert.equal(root.className,"admorph-experience admorph-theme-editorial");
+ assert.ok(root.className.startsWith("admorph-experience admorph-theme-editorial"));
+ assert.ok(root.className.includes("admorph-visual-split admorph-palette-sand admorph-fit-cover"));
  assert.equal(root.children.length,4);
  const hero=root.children[0];
  assert.equal(hero.children[0].children[0].src,"https://cdn.shopify.com/s/files/test.jpg");
@@ -99,4 +100,19 @@ test("V2 content never changes native product purchasing on normal visits",async
  const r=await runStorefront({v2:true});
  assert.equal(r.requestUrls.length,0);
  assert.equal(r.auto.hidden,true);
+});
+
+test("AI visual direction changes only predefined presentation classes",async()=>{
+ const result=await runStorefront({query:"?admorph_ad=120255890044740602",v2:true,
+  visual:{composition:"spotlight",palette:"sage",imageFit:"contain",mood:"Calm",rationale:"Muted seasonal visuals"}});
+ const hero=result.auto.nodes[0];
+ assert.ok(hero.className.includes("admorph-visual-spotlight"));
+ assert.ok(hero.className.includes("admorph-palette-sage"));
+ assert.ok(hero.className.includes("admorph-fit-contain"));
+ assert.equal(result.requestUrls.length,1);
+});
+test("unknown visual values safely fall back to predefined neutral layout",async()=>{
+ const result=await runStorefront({query:"?admorph_ad=120255890044740602",v2:true,
+  visual:{composition:"unexpected",palette:"transparent",imageFit:"stretch"}});
+ assert.ok(result.auto.nodes[0].className.includes("admorph-visual-split admorph-palette-sand admorph-fit-cover"));
 });
