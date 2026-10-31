@@ -8,10 +8,11 @@ export default function Privacy(){
    <ul>
     <li><strong>Shopify store and account data:</strong> store domain; product titles, descriptions, identifiers, handles and images; Shopify authorization sessions and, where included with those sessions, merchant administrator identifiers, names, email addresses, role or locale information.</li>
     <li><strong>Meta advertising data:</strong> authorized ad account identifiers and names, ad IDs, status, text, creative metadata, media URLs and destination URLs returned by the Meta Marketing API. We use Meta OAuth tokens to retrieve only data the merchant authorizes.</li>
-    <li><strong>Generated content:</strong> AI-suggested headlines, descriptions and benefits, campaign associations, publishing settings and edits the merchant makes.</li>
+    <li><strong>Generated content:</strong> AI-suggested headlines, descriptions, layouts, artwork backgrounds and campaign associations, together with merchant edits and publication settings.</li>
+    <li><strong>Consent-based conversion events:</strong> when merchants enable experiments and connect the Shopify Web Pixel, we receive a campaign ID, A/B group, event category (view, CTA, add-to-cart or checkout completed), timestamp and random deduplication reference. We do not intentionally collect names, email addresses, payment information, product line items or order identifiers through this feature.</li>
     <li><strong>Technical data:</strong> operational request details, timestamps, error and security logs processed by our hosting infrastructure. These may include IP addresses and browser technical information.</li>
    </ul>
-   <p>The current app does not request Shopify customer records or order data and does not install a separate Meta Pixel. Store visitors may request published content through the Shopify storefront app proxy, which can generate ordinary infrastructure request logs.</p>
+   <p>The app does not request Shopify customer records or order data and does not install a Meta Pixel. Its optional Shopify Web Pixel can receive Shopify-provided customer events after the required analytics consent. Store visitors may request published content through the Shopify app proxy, which generates ordinary operational logs.</p>
   </Section>
   <Section title="3. Why we use the information">
    <p>We process information to authenticate shops, connect the merchant's selected Meta account, synchronize authorized ad creatives, match an advertisement to a Shopify product, generate and store AI content, publish approved product messaging and maintain security and reliability. Depending on the context, processing is necessary to provide our service, for legitimate operational and security interests, or based on the merchant's authorization. Merchants are responsible for customer-facing privacy notices and permissions relevant to their own storefronts.</p>
@@ -19,17 +20,21 @@ export default function Privacy(){
   <Section title="4. Meta permissions and AI processing">
    <p>AdMorph currently requests <code>ads_read</code> for its Meta integration. It does not post advertisements or modify Meta campaigns under this permission. To produce draft marketing copy, relevant product descriptions and advertising text—and, where available, creative images—may be sent to OpenAI's API for processing. Review the content before publication; AI output can be inaccurate.</p>
   </Section>
-  <Section title="5. Providers and international processing">
+  <Section title="5. Optional A/B analytics and customer privacy">
+   <p>When enabled by the merchant, A/B testing compares the ordinary product page against an AdMorph experience. Shopify's Web Pixel respects the analytics permissions collected through the store's Shopify Customer Privacy configuration. If consent is not available, no A/B analytics events are submitted and the visitor sees the ordinary AdMorph experience without experiment tracking.</p>
+   <p>Experiment event records are used for aggregate counts and attribution, not individual customer profiles. A signed campaign attribution token is valid for up to 24 hours; some checkout completions cannot be attributed if browser session continuity is lost. The merchant controls experiment activation and has responsibility for providing required storefront notices and consent options.</p>
+  </Section>
+  <Section title="6. Providers and international processing">
    <p>AdMorph uses Shopify for app authentication and product data, Meta for authorized advertising data, OpenAI for AI generation, Supabase for PostgreSQL data storage, and Render for application hosting. These providers may process information in jurisdictions outside your country, subject to the applicable providers' terms and privacy safeguards.</p>
    <p>We do not sell merchant, Meta or customer data to advertisers or data brokers.</p>
   </Section>
-  <Section title="6. Security and retention">
-   <p>Meta OAuth tokens are encrypted before storage, and Shopify-admin requests are authenticated. Server-side application credentials are not intentionally made public. We keep connection, product, campaign and draft data while necessary to operate the app and until the relevant merchant action or deletion request. Operational logs and provider backups may have separate retention periods. No method of storage or transmission is entirely risk-free.</p>
+  <Section title="7. Security and retention">
+   <p>Meta OAuth tokens are encrypted before storage, and Shopify-admin requests are authenticated. Server-side application credentials are not intentionally made public. We keep connection, product, campaign, generated artwork, anonymous A/B event counts and draft data while necessary to operate the app and until the relevant merchant action or deletion request. Signed event tokens expire after 24 hours; event records may remain for campaign reporting until campaign deletion. Operational logs and provider backups may have separate retention periods. No method of storage or transmission is entirely risk-free.</p>
   </Section>
-  <Section title="7. Your choices, access and deletion">
+  <Section title="8. Your choices, access and deletion">
    <p>Authorized merchants can disconnect Meta from within the AdMorph dashboard; this removes the stored Meta connection, imported ads and related generated campaigns. Uninstalling the Shopify app triggers removal of the application's shop records through authenticated app-uninstall handling. For access, correction, erasure, or other applicable privacy rights, write to <a href="mailto:hello@afterwin.co">hello@afterwin.co</a>. We may need to verify account ownership before responding. Detailed steps are available on our <a href="/data-deletion">Data Deletion Instructions page</a>.</p>
   </Section>
-  <Section title="8. Changes to this policy">
+  <Section title="9. Changes to this policy">
    <p>We may update this policy as the service evolves, including when we introduce new integrations, analytics or billing. The effective date at the top identifies the current version. Significant changes will be communicated where required.</p>
   </Section>
  </LegalPage>;
