@@ -121,12 +121,20 @@ export default function Autopilot(){
      </s-section>
      {(message||hasFinished)&&<s-section>
         <div role="status" aria-live="polite">
-          <SectionHead title={running?"Autopilot in progress":hasFinished?"Run complete":"Run status"}/>
+          <SectionHead title={running?"Checking your Meta ads":hasFinished&&progress.processed>0&&progress.matched===0?"No eligible Shopify product ads found":hasFinished?"Autopilot finished":"Run status"}/>
           <p className="ad-muted">{message}</p>
           <div className="auto-metrics">
-           {([["processed","Processed"],["matched","Matched"],["generated","Generated"],["published","Published"],["unmatched","Needs mapping"],["failed","Errors"]] as const).map(([key,label])=><div key={key}><strong>{progress[key]}</strong><span>{label}</span></div>)}
+           {([["processed","Ads checked"],["inactive","Paused / inactive"],["unmatched","Not matched"],["matched","Products matched"],["generated","AI drafts created"],["published","Published"],["failed","Errors"]] as const).map(([key,label])=><div key={key}><strong>{progress[key]}</strong><span>{label}</span></div>)}
           </div>
-          {hasFinished&&<p className="ad-muted">Collection destinations, ambiguous carousels and inactive ads are skipped. Use AI Campaigns for manual matching.</p>}
+          {hasFinished&&progress.processed>0&&progress.matched===0&&<div className="am-autopilot-guidance">
+            <strong>Why wasn't AI content generated?</strong>
+            <p>{progress.inactive} ads were inactive and skipped. {progress.unmatched} active ads did not link directly to a product belonging to this Shopify store. No Shopify product could be selected automatically.</p>
+            <strong>What to do next</strong>
+            <p>Use a Meta ad linking to a Shopify product page such as <code>https://YOUR-STORE/products/product-handle</code>, or manually match a relevant ad with an actual product in AI Campaigns. Ads promoting unrelated websites cannot produce a meaningful Shopify product experience.</p>
+            <a href="/app/campaigns" className="ad-btn ghost">Review ads & manually match a product</a>
+          </div>}
+          {hasFinished&&progress.matched>0&&<p className="ad-muted">Check AI Campaigns to review generated drafts and approve storefront content. Skipped ads may require manual product matching.</p>}
+          {hasFinished&&progress.processed===0&&<p className="ad-muted">No ads were imported from this account. Select another Meta ad account or check your ad campaigns.</p>}
         </div>
      </s-section>}
      <s-section>
