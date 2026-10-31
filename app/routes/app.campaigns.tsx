@@ -62,8 +62,8 @@ export const action=async({request}:ActionFunctionArgs)=>{
       palette:visual.palette,mood:visual.mood
     });
     await prisma.campaignImage.upsert({
-      where:{campaignId:id},create:{campaignId:id,shop,draftData:bytes},
-      update:{draftData:bytes}
+      where:{campaignId:id},create:{campaignId:id,shop,draftData:new Uint8Array(bytes)},
+      update:{draftData:new Uint8Array(bytes)}
     });
     return {ok:true,message:"AI background generated as a draft. Review the image before approving it.",campaignId:id};
   }
@@ -112,7 +112,7 @@ export const action=async({request}:ActionFunctionArgs)=>{
         userErrors{code message}
        }
       }`,{variables:{settings:JSON.stringify({shop})}});
-    const result=await response.json();
+    const result:any=await response.json();
     if(result.errors)throw new Error(result.errors.map((x:{message:string})=>x.message).join("; "));
     const mutation=result.data?.webPixelCreate;
     if(mutation?.userErrors?.length)throw new Error(mutation.userErrors.map((x:{message:string})=>x.message).join("; "));
