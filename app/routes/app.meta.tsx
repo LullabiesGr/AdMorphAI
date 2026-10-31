@@ -120,19 +120,25 @@ export default function MetaPage(){
         </s-paragraph>}
       </s-stack>
     </s-section>
-    {data.connected&&<s-section heading="Select advertising account">
-      <Form method="post">
-        <input type="hidden" name="intent" value="select"/>
-        <select name="account" defaultValue={data.connection?.selectedAccountId||""} required className="ad-input">
-          <option value="" disabled>Select an ad account</option>
-          {accounts.map(a=><option key={a.id} value={a.id}>{a.name} ({a.id})</option>)}
-        </select>
-        <button type="submit" className="ad-btn">Select and run Autopilot</button>
-      </Form>
-      <Form method="post" style={{marginTop:18}}>
+    {data.connected&&<s-section heading="Choose your advertising account">
+      <p className="ad-muted">{accounts.length} Meta ad account{accounts.length===1?"":"s"} available. Select one to start Autopilot.</p>
+      {accounts.length === 0 && <s-banner tone="warning">No accessible accounts. Check Meta ad account assignments and ads_read permission.</s-banner>}
+      <div style={{display:"grid",gap:12,marginTop:15}}>
+        {accounts.map(a=><Form method="post" key={a.id} style={{display:"flex",alignItems:"center",justifyContent:"space-between",gap:15,padding:16,border:"1px solid #dbe3ee",borderRadius:12,background:"#f8fafc",flexWrap:"wrap"}}>
+          <input type="hidden" name="intent" value="select"/>
+          <input type="hidden" name="account" value={a.id}/>
+          <div>
+            <strong style={{display:"block"}}>{a.name}</strong>
+            <span className="ad-muted">{a.id}</span>
+            {data.connection?.selectedAccountId===a.id&&<span className="ad-status published" style={{marginLeft:9}}>Selected</span>}
+          </div>
+          <button type="submit" className="ad-btn">Select & start Autopilot</button>
+        </Form>)}
+      </div>
+      {data.connection?.selectedAccountId&&<Form method="post" style={{marginTop:18}}>
         <input type="hidden" name="intent" value="import"/>
         <button className="ad-btn ghost" type="submit">Sync ads manually</button>
-      </Form>
+      </Form>}
     </s-section>}
     {data.connected&&<s-section heading="Automated setup">
       <p>Autopilot imports eligible ads, matches active products and generates AI content.</p>
