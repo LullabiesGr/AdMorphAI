@@ -1,7 +1,7 @@
 import type { LoaderFunctionArgs } from "react-router";
 import prisma from "../db.server";
 import { authenticate } from "../shopify.server";
-import { variantSchema } from "../lib/variant";
+import { campaignContentSchema } from "../lib/experience";
 export const loader=async({request}:LoaderFunctionArgs)=>{
  const {session}=await authenticate.public.appProxy(request);
  const url=new URL(request.url);
@@ -16,7 +16,7 @@ export const loader=async({request}:LoaderFunctionArgs)=>{
    where:{shop,metaAdId:adId,productHandle:handle,status:"PUBLISHED"},
    orderBy:{updatedAt:"desc"},select:{content:true}
  });
- const parsed=variantSchema.safeParse(campaign?.content);
+ const parsed=campaignContentSchema.safeParse(campaign?.content);
  console.info("[AdMorph proxy] request handled",{shop,matched:parsed.success,hasAd:Boolean(adId),hasProduct:Boolean(handle)});
  return new Response(JSON.stringify({content:parsed.success?parsed.data:null}),{headers});
 };

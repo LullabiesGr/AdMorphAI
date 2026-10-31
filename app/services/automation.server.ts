@@ -2,8 +2,8 @@ import prisma from "../db.server";
 import { importMetaAds } from "./meta.server";
 import { getShopStorefrontDomains, getActiveProductByHandle, type ShopifyAdmin } from "./products.server";
 import { productHandleFromAd } from "../lib/ad-matching";
-import { generateVariant } from "./ai.server";
-import { variantSchema } from "../lib/variant";
+import { generateExperience } from "./ai.server";
+import { hasValidCampaignContent } from "../lib/experience";
 
 export type BatchStats={
  processed:number; matched:number; generated:number; published:number;
@@ -49,14 +49,14 @@ export async function runAutomationBatch(shop:string,admin:ShopifyAdmin,cursor:s
      stats.matched++;
      const key={shop,metaAdId:ad.adId,productId:product.id};
      const existing=await prisma.campaign.findUnique({where:{shop_metaAdId_productId:key}});
-     if(existing?.content && variantSchema.safeParse(existing.content).success){
+     if(existing?.content && hasValidCampaignContent(existing.content)){
        stats.existing++;continue;
      }
      const campaign=existing || await prisma.campaign.create({data:{
        shop,metaAdId:ad.adId,productId:product.id,productHandle:product.handle,productTitle:product.title
      }});
      // No storefront changes occur until publishing.
-     const content=await generateVariant({product,adCreative:ad.creative});
+     const content=await generateExperience({product,adCreative:ad.creative});
      await prisma.campaign.update({where:{id:campaign.id},data:{
        content,productHandle:product.handle,productTitle:product.title,
        status:setting?.autoPublish ? "PUBLISHED" : "DRAFT"
@@ -82,7 +82,7 @@ export async function runAutomationBatch(shop:string,admin:ShopifyAdmin,cursor:s
 
 export async function publishAllDrafts(shop:string){
  const records=await prisma.campaign.findMany({where:{shop,status:"DRAFT"},select:{id:true,content:true},take:100});
- const ids=records.filter(r=>variantSchema.safeParse(r.content).success).map(r=>r.id);
+ const ids=records.filter(r=>hasValidCampaignContent(r.content)).map(r=>r.id);
  if(ids.length)await prisma.campaign.updateMany({where:{shop,id:{in:ids}},data:{status:"PUBLISHED"}});
  return ids.length;
 }
