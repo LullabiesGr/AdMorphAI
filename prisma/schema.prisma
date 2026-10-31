@@ -1,0 +1,81 @@
+generator client {
+  provider = "prisma-client-js"
+}
+datasource db {
+  provider = "postgresql"
+  url = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+model Session {
+  id String @id
+  shop String
+  state String
+  isOnline Boolean @default(false)
+  scope String?
+  expires DateTime?
+  accessToken String
+  userId BigInt?
+  firstName String?
+  lastName String?
+  email String?
+  accountOwner Boolean @default(false)
+  locale String?
+  collaborator Boolean? @default(false)
+  emailVerified Boolean? @default(false)
+  refreshToken String?
+  refreshTokenExpires DateTime?
+  @@index([shop])
+}
+model Shop {
+  domain String @id
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  meta MetaConnection?
+  ads MetaAd[]
+  campaigns Campaign[]
+}
+model MetaOauthState {
+  nonce String @id
+  shop String
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+  @@index([expiresAt])
+}
+model MetaConnection {
+  shop String @id
+  encryptedToken String @db.Text
+  tokenExpiresAt DateTime?
+  selectedAccountId String?
+  accounts Json?
+  connectedAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  owner Shop @relation(fields:[shop],references:[domain],onDelete:Cascade)
+}
+model MetaAd {
+  id String @id @default(cuid())
+  shop String
+  adId String
+  accountId String
+  name String
+  status String
+  creative Json
+  updatedAt DateTime @updatedAt
+  owner Shop @relation(fields:[shop],references:[domain],onDelete:Cascade)
+  @@unique([shop,adId])
+  @@index([shop,accountId])
+}
+model Campaign {
+  id String @id @default(cuid())
+  shop String
+  metaAdId String
+  productId String
+  productHandle String
+  productTitle String
+  status String @default("DRAFT")
+  content Json?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  owner Shop @relation(fields:[shop],references:[domain],onDelete:Cascade)
+  @@unique([shop,metaAdId,productId])
+  @@index([shop,status])
+}
