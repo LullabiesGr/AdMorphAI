@@ -12,7 +12,7 @@ export const loader=async({request}:LoaderFunctionArgs)=>{
   prisma.metaConnection.findUnique({where:{shop},select:{selectedAccountId:true,accounts:true,connectedAt:true}}),
   prisma.automationSetting.findUnique({where:{shop}}),
   prisma.metaAd.count({where:{shop}}),
-  prisma.campaign.count({where:{shop,status:"DRAFT",content:{not:"null" as any}}}),
+  prisma.campaign.count({where:{shop,status:"DRAFT"}}),
   prisma.campaign.count({where:{shop,status:"PUBLISHED"}})
  ]);
  const shopifyKey=process.env.SHOPIFY_API_KEY || "";
@@ -64,7 +64,7 @@ export default function Autopilot(){
    }
    setMessage(result.message);
    if(result.hasMore){
-     fetcher.submit({intent:"step",cursor:result.nextCursor||""},{method:"post"});
+     fetcher.submit({intent:"step",cursor:("nextCursor" in result ? result.nextCursor : "") || ""},{method:"post"});
    }else{
      setRunning(false);setHasFinished(true);
    }
