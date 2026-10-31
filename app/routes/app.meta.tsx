@@ -5,6 +5,7 @@ import { Form, redirect, useActionData, useLoaderData, useNavigate, useRevalidat
 import { authenticate } from "../shopify.server";
 import prisma from "../db.server";
 import { importMetaAds, metaAuthorizeUrl } from "../services/meta.server";
+import {PageIntro,State,SectionHead} from "../components/dashboard";
 
 export const loader=async({request}:LoaderFunctionArgs)=>{
   const {session}=await authenticate.admin(request);
@@ -94,7 +95,17 @@ export default function MetaPage(){
     if(data.connection?.selectedAccountId)navigate("/app/autopilot?run=1");
   },[waiting,data.connected,data.connection?.selectedAccountId,navigate]);
 
-  return <s-page heading="Meta Ads connection">
+  return <s-page heading="Meta Ads">
+   <div className="am-container">
+    <PageIntro eyebrow="META CONNECTION" title="Your advertising accounts, connected"
+      description="Authorize Meta once, choose your ad account and let AdMorph prepare AI experiences.">
+      <State text={data.connected?"Meta connected":"Connect to continue"} kind={data.connected?"success":"warning"}/>
+    </PageIntro>
+    <div className="am-stats am-stats-three">
+      <s-section><div className="am-stat"><span className="am-kpi-label">Connection status</span><strong className="am-kpi-value">{data.connected?"Connected":"Disconnected"}</strong><span className="am-kpi-note">Meta Marketing API</span></div></s-section>
+      <s-section><div className="am-stat"><span className="am-kpi-label">Available accounts</span><strong className="am-kpi-value">{accounts.length}</strong><span className="am-kpi-note">Authorized by Meta</span></div></s-section>
+      <s-section><div className="am-stat"><span className="am-kpi-label">Imported advertisements</span><strong className="am-kpi-value">{data.adCount}</strong><span className="am-kpi-note">Read-only import</span></div></s-section>
+    </div>
     <s-section heading="Connect your advertising account">
       <p className="ad-muted" style={{marginBottom:16}}>
         Connect once to import ad creatives and generate AI storefront experiences automatically.
@@ -146,9 +157,10 @@ export default function MetaPage(){
     </s-section>}
     {data.connected&&<s-section heading="Disconnect and delete data">
       <s-paragraph>Remove the connection, imported ads and generated campaigns for this store.</s-paragraph>
-      <Form method="post"><input type="hidden" name="intent" value="disconnect"/>
+      <Form method="post" onSubmit={event=>{if(!window.confirm("Disconnect Meta and delete all imported ads and generated campaigns for this shop?"))event.preventDefault();}}><input type="hidden" name="intent" value="disconnect"/>
         <button className="ad-btn ghost" type="submit">Disconnect Meta and delete imported data</button>
       </Form>
     </s-section>}
+   </div>
   </s-page>;
 }
