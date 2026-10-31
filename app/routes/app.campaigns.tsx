@@ -1,3 +1,4 @@
+import {Prisma} from "@prisma/client";
 import {useMemo,useState} from "react";
 import type {ActionFunctionArgs,LoaderFunctionArgs} from "react-router";
 import {Form,Link,useActionData,useFetcher,useLoaderData} from "react-router";
@@ -7,7 +8,7 @@ import {listProducts,getProduct} from "../services/products.server";
 import {generateExperience} from "../services/ai.server";
 import {ExperiencePreview,ExperienceEditor} from "../components/experience-preview";
 import {variantSchema} from "../lib/variant";
-import {experienceSchema,campaignContentSchema,hasValidCampaignContent} from "../lib/experience";
+import {experienceSchema,campaignContentSchema,hasValidCampaignContent,isExperience} from "../lib/experience";
 import {metaCreativeCopy} from "../services/meta.server";
 import {PageIntro,Stat,State,SectionHead,Empty} from "../components/dashboard";
 
@@ -55,15 +56,21 @@ export const action=async({request}:ActionFunctionArgs)=>{
       throw new Error("Deletion was not confirmed.");
     // All mutations are scoped to the authenticated Shopify tenant.
     const records=await prisma.campaign.findMany({where:{shop,id:{in:ids}},
-      select:{id:true,content:true,status:true}});
+      select:{id:true,content:true,draftContent:true,status:true}});
     if(intent==="bulk_delete"){
       const result=await prisma.campaign.deleteMany({where:{shop,id:{in:records.map(r=>r.id)}}});
       return {ok:true,message:`Deleted ${result.count} campaign(s).`};
     }
     if(intent==="bulk_publish"){
-      const valid=records.filter(c=>c.status==="DRAFT"&&hasValidCampaignContent(c.draftContent||c.content)).map(c=>c.id);
-      const result=await prisma.campaign.updateMany({where:{shop,id:{in:valid}},data:{status:"PUBLISHED"}});
-      return {ok:true,message:`Published ${result.count} valid draft(s). Drafts without AI content were skipped.`};
+      const valid=records.filter(c=>(c.status==="DRAFT"||Boolean(c.draftContent))&&hasValidCampaignContent(c.draftContent||c.content));
+      await prisma.$transaction(valid.map(c=>prisma.campaign.update({
+        where:{id:c.id},data:{
+          status:"PUBLISHED",
+          content:campaignContentSchema.parse(c.draftContent||c.content),
+          draftContent:Prisma.DbNull
+        }
+      })));
+      return {ok:true,message:`Approved ${valid.length} valid experience(s). Missing or invalid drafts were skipped.`};
     }
     const valid=records.filter(c=>c.status==="PUBLISHED").map(c=>c.id);
     const result=await prisma.campaign.updateMany({where:{shop,id:{in:valid}},data:{status:"DRAFT"}});
@@ -85,7 +92,7 @@ export const action=async({request}:ActionFunctionArgs)=>{
       await prisma.campaign.update({where:{id},data:{draftContent:parsed.data}});
       return {ok:true,message:"Edits saved for review. The published storefront experience is unchanged."};
     }
-    await prisma.campaign.update({where:{id},data:{content:parsed.data,draftContent:null,status:"DRAFT"}});
+    await prisma.campaign.update({where:{id},data:{content:parsed.data,draftContent:Prisma.DbNull,status:"DRAFT"}});
     return {ok:true,message:"Changes saved as draft. Review before publishing."};
   }
   if(intent==="save_experience"){
@@ -111,12 +118,12 @@ export const action=async({request}:ActionFunctionArgs)=>{
       await prisma.campaign.update({where:{id},data:{draftContent:parsed.data}});
       return {ok:true,message:"Experience 2.0 saved for approval. Live content stays unchanged."};
     }
-    await prisma.campaign.update({where:{id},data:{content:parsed.data,status:"DRAFT",draftContent:null}});
+    await prisma.campaign.update({where:{id},data:{content:parsed.data,status:"DRAFT",draftContent:Prisma.DbNull}});
     return {ok:true,message:"Experience 2.0 draft saved."};
   }
   if(intent==="discard_draft"){
     const id=String(data.get("id")||"");
-    await prisma.campaign.updateMany({where:{id,shop,status:"PUBLISHED"},data:{draftContent:null}});
+    await prisma.campaign.updateMany({where:{id,shop,status:"PUBLISHED"},data:{draftContent:Prisma.DbNull}});
     return {ok:true,message:"Pending changes discarded. Published content was not changed."};
   }
   if(["generate","publish","unpublish"].includes(intent)){
@@ -135,7 +142,7 @@ export const action=async({request}:ActionFunctionArgs)=>{
         return {ok:true,message:"New AI Experience 2.0 staged. Existing published content remains live until you approve."};
       }
       await prisma.campaign.update({where:{id},data:{
-        productHandle:product.handle,productTitle:product.title,content,draftContent:null,status:"DRAFT"
+        productHandle:product.handle,productTitle:product.title,content,draftContent:Prisma.DbNull,status:"DRAFT"
       }});
       return {ok:true,message:"Experience 2.0 generated. Preview and approve before publishing."};
     }
@@ -144,7 +151,7 @@ export const action=async({request}:ActionFunctionArgs)=>{
       if(!hasValidCampaignContent(nextContent))
         throw new Error("Generate a valid experience before publishing.");
       await prisma.campaign.update({where:{id},data:{
-        status:"PUBLISHED",content:nextContent,draftContent:null
+        status:"PUBLISHED",content:campaignContentSchema.parse(nextContent),draftContent:Prisma.DbNull
       }});
       return {ok:true,message:"Approved experience published."};
     }
@@ -250,13 +257,13 @@ export default function Campaigns(){
             <div className="am-section-head"><h3>{c.productTitle}</h3><button type="button" className="am-table-toggle" onClick={()=>setExpanded(null)}>Close</button></div>
             <p className="ad-muted">Meta ad: {c.metaAdId}</p>
             {c.draftContent&&<s-banner tone="info">This is an unpublished update. The existing experience remains live until you approve the draft.</s-banner>}
-            {valid.success && valid.data.version==="2.0" && <>
+            {valid.success && isExperience(valid.data) && <>
               <ExperiencePreview content={valid.data}/>
               <details className="am-editor-details"><summary>Edit Experience 2.0 content</summary>
                 <ExperienceEditor id={c.id} content={valid.data}/>
               </details>
             </>}
-            {valid.success && !("version" in valid.data) && <>
+            {valid.success && !isExperience(valid.data) && <>
               <div className="ad-preview"><h3>{valid.data.headline}</h3><p>{valid.data.subheadline}</p>
                 <ul>{valid.data.benefits.map((b,i)=><li key={i}>{b}</li>)}</ul>
                 <small>CTA: {valid.data.cta}</small>
@@ -277,7 +284,7 @@ export default function Campaigns(){
                 <button type="submit" className="ad-btn ghost">{valid.success?"Generate Experience 2.0":"Generate first AI experience"}</button></Form>
               {valid.success&&((c.status==="DRAFT")||Boolean(c.draftContent))&&<Form method="post">
                  <input type="hidden" name="intent" value="publish"/><input type="hidden" name="id" value={c.id}/>
-                 <button type="submit" className="ad-btn">Approve & publish {valid.data.version==="2.0"?"Experience 2.0":"draft"}</button></Form>}
+                 <button type="submit" className="ad-btn">Approve & publish {isExperience(valid.data)?"Experience 2.0":"draft"}</button></Form>}
               {c.status==="PUBLISHED"&&<Form method="post"><input type="hidden" name="intent" value="unpublish"/><input type="hidden" name="id" value={c.id}/>
                 <button type="submit" className="ad-btn ghost">Unpublish</button></Form>}
               {c.draftContent&&<Form method="post"><input type="hidden" name="intent" value="discard_draft"/><input type="hidden" name="id" value={c.id}/>
