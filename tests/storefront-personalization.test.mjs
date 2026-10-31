@@ -7,16 +7,17 @@ const liquid=readFileSync(new URL("../extensions/admorph-theme/blocks/admorph-au
 
 function mockElement(tag){
  return {tagName:tag.toUpperCase(),children:[],textContent:"",className:"",
+    classList:{add(name){this.lastAdded=name;}},addEventListener(name,handler){this["on"+name]=handler;},
     appendChild(child){this.children.push(child);return child;},
     replaceChildren(...children){this.children=children;},
     setAttribute(name,value){this[name]=value;}};
 }
-async function runStorefront({query="",withManual=false}={}){
+async function runStorefront({query="",withManual=false,v2=false}={}){
  const events={};
  const requestUrls=[];
  const makeRoot=(automatic)=>({
     classList:{contains(name){return automatic&&name==="admorph-auto-slot";}},
-    getAttribute(name){return name==="data-product-handle"?"city-line-trench":name==="data-admorph-placement"?"after_title":null;},
+    getAttribute(name){return name==="data-product-handle"?"city-line-trench":name==="data-admorph-placement"?"after_title":name==="data-product-image"?"https://cdn.shopify.com/s/files/test.jpg":name==="data-product-image-alt"?"City Line Trench":null;},
     dataset:{},hidden:true,isConnected:true,previousElementSibling:null,
     replaceChildren(...items){this.nodes=items;},
     setAttribute(name,value){this[name]=value;}
@@ -36,10 +37,16 @@ async function runStorefront({query="",withManual=false}={}){
    addEventListener(name,callback){events[name]=callback;}
  };
  const window={Shopify:{designMode:false},location:{search:query},addEventListener(name,callback){events[name]=callback;}};
- const fetch=async url=>{requestUrls.push(url);return{ok:true,json:async()=>({content:{
-   headline:"City Line Trench: Effortless Urban Style",
-   subheadline:"Layer up",
-   benefits:["Fluid silhouette","All-season look"]}})};};
+ const content=v2?{
+    version:"2.0",angle:"Urban layers",layout:"editorial",
+    hero:{eyebrow:"The new edit",headline:"Style meets the city",subheadline:"A concise introductory editorial line"},
+    highlights:Array.from({length:3},(_,i)=>({title:"Detail "+i,text:"A distinct product detail "+i})),
+    styleMoments:Array.from({length:3},(_,i)=>({label:"Look "+i,title:"Idea "+i,text:"Styling suggestion "+i})),
+    adConnection:{title:"Continue the story",text:"See the look you clicked through to explore."},
+    cta:{primary:"Explore your size",secondary:"Your Shopify cart stays the same"}
+ }: {headline:"City Line Trench: Effortless Urban Style",
+    subheadline:"Layer up",benefits:["Fluid silhouette","All-season look"]};
+ const fetch=async url=>{requestUrls.push(url);return{ok:true,json:async()=>({content})};};
  vm.runInNewContext(script,{window,document,fetch,console,URLSearchParams});
  await new Promise(resolve=>setImmediate(resolve));
  return {auto,manual,requestUrls,events};
@@ -67,4 +74,29 @@ test("manual block prevents a duplicate automatic block",async()=>{
  assert.equal(result.requestUrls.length,1);
  assert.equal(result.auto.hidden,true);
  assert.equal(result.manual.hidden,false);
+});
+
+test("V2 renders structured editorial sections with real product image",async()=>{
+ const result=await runStorefront({query:"?admorph_ad=120255890044740602",v2:true});
+ assert.equal(result.requestUrls.length,1);
+ assert.equal(result.auto.hidden,false);
+ const root=result.auto.nodes[0];
+ assert.equal(root.className,"admorph-experience admorph-theme-editorial");
+ assert.equal(root.children.length,4);
+ const hero=root.children[0];
+ assert.equal(hero.children[0].children[0].src,"https://cdn.shopify.com/s/files/test.jpg");
+ assert.equal(hero.children[1].children[1].textContent,"Style meets the city");
+ const details=root.children[1];
+ assert.equal(details.children[1].children.length,3);
+ const moments=root.children[2];
+ assert.equal(moments.children[1].children.length,3);
+ const button=root.children[3].children[3];
+ assert.equal(button.textContent,"Explore your size");
+ assert.equal(button.type,"button");
+ assert.equal(typeof button.onclick,"function");
+});
+test("V2 content never changes native product purchasing on normal visits",async()=>{
+ const r=await runStorefront({v2:true});
+ assert.equal(r.requestUrls.length,0);
+ assert.equal(r.auto.hidden,true);
 });
