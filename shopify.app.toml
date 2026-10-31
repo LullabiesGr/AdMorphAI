@@ -30,6 +30,11 @@ api_version = "2026-10"
   compliance_topics = ["shop/redact"]
   uri = "/webhooks/shop/redact"
 
+# Production protection: Shopify app dev must not replace the Render URL
+# or the App Proxy URL with a temporary tunnel.
+[build]
+automatically_update_urls_on_dev = false
+
 [app_proxy]
 # Production backend endpoint. Changes here only take effect after `shopify app deploy`.
 url = "https://admorphai.onrender.com/apps/admorph"

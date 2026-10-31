@@ -59,3 +59,15 @@ A Shopify-branded 404 at `https://YOUR-STORE/apps/admorph` means the storefront 
 6. After the proxy responds with AI copy, activate the AdMorph product Theme App Block in the published product template and use `?admorph_ad=KNOWN_PUBLISHED_AD` on the product URL. **Do not attempt to bypass Shopify proxy signatures or expose an unauthenticated cross-store API.**
 
 Shopify reference: https://shopify.dev/docs/apps/build/online-store/app-proxies
+
+### Prevent App Proxy regression on Shopify extension deploy
+
+Shopify CLI may have more than one `shopify.app.*.toml` file. `shopify app config link` can generate a second, named configuration pulled from the Dev Dashboard, and it becomes the default; that config can omit a proxy even while `shopify.app.toml` contains one. A future `shopify app deploy` then releases the wrong configuration and the storefront returns HTTP 404 despite a working Render backend.
+
+- Use `powershell -ExecutionPolicy Bypass -File .\\scripts\\check-shopify-config.ps1` BEFORE each `shopify app deploy`. It checks all Shopify config files, never prints the Client ID or a secret, and reports missing proxy configuration, `write_app_proxy`, and URL substitution protection.
+- The actual config used for the deploy MUST contain `[app_proxy]` with `url = "https://admorphai.onrender.com/apps/admorph"`, `prefix = "apps"` and `subpath = "admorph"`. It must also contain `[build] automatically_update_urls_on_dev = false`, plus the correct nonempty `client_id` linked to the existing AdMorph AI app.
+- Run `shopify app deploy --config <actual-filename>` using the exact verified config, not an ambiguous default. Review the CLI deployment summary and make sure it includes the app proxy and the correct Shopify Client ID.
+- If `shopify app config link` creates a second config file, add `[app_proxy]` and `[build]` to THAT file before deploying; do not assume changing the checked-in starter `shopify.app.toml` affects the active config.
+- Do not run `shopify app dev` with automatic URL updates enabled on production AdMorph AI. Shopify confirmed this can rewrite the proxy target to a temporary tunnel even when the TOML appears unchanged.
+
+Official Shopify docs: https://shopify.dev/docs/apps/build/cli-for-apps/manage-app-config-files and https://shopify.dev/docs/apps/build/online-store/app-proxies .
