@@ -14,12 +14,15 @@ export const loader=async({request}:LoaderFunctionArgs)=>{
  ]);
  const base="https://"+session.shop;
  const autoEmbedEditor=new URL(base+"/admin/themes/current/editor");
+ const embedPanelUrl=new URL(base+"/admin/themes/current/editor");
+ embedPanelUrl.searchParams.set("context","apps");
+ embedPanelUrl.searchParams.set("template","product");
  autoEmbedEditor.searchParams.set("context","apps");
  autoEmbedEditor.searchParams.set("template","product");
  autoEmbedEditor.searchParams.set("activateAppId",(process.env.SHOPIFY_API_KEY||"")+"/admorph-autopilot");
  const testLink=testCampaign ? base+"/products/"+encodeURIComponent(testCampaign.productHandle)+"?admorph_ad="+encodeURIComponent(testCampaign.metaAdId) : null;
  const proxyLink=testCampaign ? base+"/apps/admorph?ad_id="+encodeURIComponent(testCampaign.metaAdId)+"&product_handle="+encodeURIComponent(testCampaign.productHandle) : null;
- return {themeConfirmedAt:setting?.themeConfirmedAt||null,published,editorUrl:themeEditorUrl(session.shop),inlineEditorUrl:themeEditorUrl(session.shop,"mainSection"),autoEmbedEditorUrl:autoEmbedEditor.toString(),
+ return {themeConfirmedAt:setting?.themeConfirmedAt||null,published,editorUrl:themeEditorUrl(session.shop),inlineEditorUrl:themeEditorUrl(session.shop,"mainSection"),autoEmbedEditorUrl:autoEmbedEditor.toString(),embedPanelUrl:embedPanelUrl.toString(),
   testProduct:testCampaign?.productTitle||null,testLink,proxyLink};
 };
 export const action=async({request}:ActionFunctionArgs)=>{
@@ -33,7 +36,8 @@ export const action=async({request}:ActionFunctionArgs)=>{
   update:{themeConfirmedAt:intent==="confirm"?new Date():null}});
  return {ok:true,message:intent==="confirm"?"Theme setup marked as confirmed.":"Theme setup marked as not confirmed."};
 };
-type ThemeCheck={status:"checking"|"active"|"available"|"missing"|"unavailable"|"error";detail:string;};
+type ThemeStatus="checking"|"active"|"available"|"missing"|"unavailable"|"error";
+type ThemeCheck={status:ThemeStatus;detail:string;manualStatus:ThemeStatus;embedStatus:ThemeStatus};
 type ThemeActivation={handle:string;name?:string;status?:string;activations?:Array<{target?:string;themeId?:string}>};
 type ThemeExtension={handle:string;type:string;activations?:ThemeActivation[]};
 function getShopifyExtensions(){
@@ -43,24 +47,39 @@ function getShopifyExtensions(){
 }
 export default function Theme(){
  const d=useLoaderData<typeof loader>(),a=useActionData<typeof action>();
- const [check,setCheck]=useState<ThemeCheck>({status:"checking",detail:"Checking the published Shopify theme…"});
+ const [check,setCheck]=useState<ThemeCheck>({status:"checking",detail:"Checking the published Shopify theme…",manualStatus:"checking",embedStatus:"checking"});
  const verify=useCallback(async()=>{
-   setCheck({status:"checking",detail:"Checking Shopify theme activation…"});
+   setCheck({status:"checking",detail:"Checking Shopify theme activation…",manualStatus:"checking",embedStatus:"checking"});
    try{
      const ext=await getShopifyExtensions();
      const themes=ext.filter(e=>e.type==="theme_app_extension");
-     const ours=themes.flatMap(e=>e.activations||[]).filter(x=>x.handle==="admorph-product"||x.handle==="admorph-autopilot");
-     if(ours.some(x=>x.status==="active")){
-       setCheck({status:"active",detail:"Shopify confirms the AdMorph personalization block is active in the published theme."});
-     }else if(ours.some(x=>x.status==="available")){
-       setCheck({status:"available",detail:"Shopify recognizes the AdMorph block, but it is not active in the published theme. Add it to the product template and Save."});
-     }else if(ours.length){
-       setCheck({status:"unavailable",detail:"Shopify found the AdMorph block but reports it unavailable. Check the published theme template and block compatibility."});
-     }else{
-       setCheck({status:"missing",detail:"Shopify does not report an AdMorph personalization block in this app version. The theme extension may not have been deployed to Shopify."});
-     }
+     const blocks=themes.flatMap(e=>e.activations||[]);
+     const statusFor=(handle:string):ThemeStatus=>{
+       const items=blocks.filter(x=>x.handle===handle);
+       if(items.some(x=>x.status==="active"))return "active";
+       if(items.some(x=>x.status==="available"))return "available";
+       if(items.length)return "unavailable";
+       return "missing";
+     };
+     const manualStatus=statusFor("admorph-product");
+     const embedStatus=statusFor("admorph-autopilot");
+     const available=manualStatus!=="missing"||embedStatus!=="missing";
+     const active=manualStatus==="active"||embedStatus==="active";
+     setCheck({
+       status:active?"active":!available?"missing":embedStatus==="available"||manualStatus==="available"?"available":"unavailable",
+       manualStatus,embedStatus,
+       detail:!available
+        ? "Shopify does not list either AdMorph theme integration in the currently installed app. Release a Shopify app version containing the Theme App Extension before activating it."
+        : embedStatus==="missing"
+        ? "The manual AdMorph block may be available, but the NEW Auto Placement embed was not included in the active Shopify version. Deploy the updated theme extension."
+        : embedStatus==="active"
+        ? "Shopify confirms AdMorph Auto Placement is active in the published theme."
+        : manualStatus==="active"
+        ? "The manual AdMorph block is active. Auto Placement is a separate integration and may still need deployment or activation."
+        : "Shopify recognizes the AdMorph integration. Enable it in the published theme and click Save."
+     });
    }catch(error){
-     setCheck({status:"error",detail:error instanceof Error?error.message:"Unable to check the Shopify theme."});
+     setCheck({status:"error",detail:error instanceof Error?error.message:"Unable to check the Shopify theme.",manualStatus:"error",embedStatus:"error"});
    }
  },[]);
  useEffect(()=>{void verify();},[verify]);
@@ -83,7 +102,10 @@ export default function Theme(){
         </div>
         <button type="button" className="ad-btn ghost" onClick={()=>void verify()} disabled={check.status==="checking"}>Check again</button>
       </div>
-      {check.status==="missing"&&<s-banner tone="warning">The Shopify Theme App Extension must be deployed separately from Render using <code>shopify app deploy</code> from your linked AdMorphAI project. Once published, return here and run Check again.</s-banner>}
+      {(check.embedStatus==="missing"||check.status==="missing")&&<s-banner tone="warning">
+       AdMorph Auto Placement does not exist in the installed Shopify app version. It cannot be activated from the Theme Editor yet.
+       Run <code>git pull origin main</code>, validate the linked configuration, and release the app extension with <code>shopify app deploy --config YOUR_LINKED_CONFIG</code>. Confirm the new version lists AdMorph Personalization and its app embed before returning here.
+      </s-banner>}
    </s-section>
    <div className="am-layout">
      <div className="am-main-column">
@@ -93,7 +115,11 @@ export default function Theme(){
         <div className="am-guide-row"><span>01</span><div><strong>Enable the AdMorph Auto Placement app embed</strong><p>Open the published theme's App embeds panel. Enable AdMorph Auto Placement.</p></div></div>
         <div className="am-guide-row"><span>02</span><div><strong>Choose where the AI copy appears</strong><p>Below product title, below Add to Cart, or below product description. Default is below product title.</p></div></div>
         <div className="am-guide-row"><span>03</span><div><strong>Press Save in Shopify</strong><p>Then open the test product URL with <code>admorph_ad</code>. Without a matching ad ID, the normal product page stays unchanged.</p></div></div>
-        <a className="ad-btn am-standalone-action" href={d.autoEmbedEditorUrl} target="_top">Enable automatic product personalization</a>
+        {check.embedStatus==="active"?<State text="Auto Placement active" kind="success"/>:
+         check.embedStatus==="available"?
+          <a className="ad-btn am-standalone-action" href={d.autoEmbedEditorUrl} target="_top">Enable AdMorph Auto Placement</a>:
+         <a className="ad-btn ghost am-standalone-action" href={d.embedPanelUrl} target="_top">Open Shopify App Embeds panel</a>}
+        {check.embedStatus==="missing"&&<p className="ad-muted">The Shopify app version has not registered Auto Placement. Deploy the extension before attempting activation; otherwise Shopify displays “App embed does not exist.”</p>}
         <p className="ad-muted">If you already use the manual AdMorph block, the automatic integration detects it and avoids showing duplicate content.</p>
        </s-section>
        <s-section>
@@ -137,6 +163,8 @@ export default function Theme(){
        </s-section>
        <s-section><SectionHead title="Publishing status"/>
          <div className="am-detail-row"><span>Published theme</span><State text={check.status==="active"?"Active":check.status==="checking"?"Checking":check.status==="error"?"Unknown":"Not active"} kind={check.status==="active"?"success":"warning"}/></div>
+         <div className="am-detail-row"><span>Auto Placement embed</span><State text={check.embedStatus==="active"?"Active":check.embedStatus==="available"?"Available":check.embedStatus==="missing"?"Not deployed":check.embedStatus==="checking"?"Checking": "Unavailable"} kind={check.embedStatus==="active"?"success":"warning"}/></div>
+         <div className="am-detail-row"><span>Manual product block</span><State text={check.manualStatus==="active"?"Active":check.manualStatus==="available"?"Available":check.manualStatus==="missing"?"Not deployed":check.manualStatus==="checking"?"Checking":"Unavailable"} kind={check.manualStatus==="active"?"success":"warning"}/></div>
          <div className="am-detail-row"><span>Merchant confirmation</span><State text={d.themeConfirmedAt?"Confirmed":"Pending"} kind={d.themeConfirmedAt?"success":"neutral"}/></div>
          <div className="am-detail-row"><span>Published experiences</span><strong>{d.published}</strong></div>
          <p className="ad-muted">Published content appears only when a visitor arrives with a matching Meta ad ID.</p>
