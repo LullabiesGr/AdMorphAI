@@ -40,6 +40,14 @@ Bolt.new can develop this repository, but first confirm its chosen production ho
 - Meta `ads_management` permission only if merchant explicitly requests in-app editing of ad URLs.
 - Add integration tests, CI, and monitoring before App Store submission.
 
+### Proxy registration reset for persistent Shopify 404
+
+Shopify documented a previous Dev Dashboard migration issue in which a correctly configured app proxy still returned Shopify HTTP 404. Its workaround was to release one app version without `[app_proxy]` and then a second version with `[app_proxy]` restored. See: https://community.shopify.dev/t/after-new-dev-platform-update-3-84-proxy-doesnt-work-anymore/22752/2
+
+**Only try this after confirming that the active Shopify app version already includes the correct proxy and the installed store has no customized app proxy path.**
+
+A guarded PowerShell script is provided at `scripts/repair-shopify-app-proxy.ps1`. Before running, execute `shopify app config link` and select the EXISTING AdMorph AI app. The script refuses an empty `client_id` and prompts before doing anything. It runs `shopify app deploy` twice with the proxy temporarily removed and restored; it always restores the local original file. If the second deployment fails, the storefront proxy can remain unregistered until `shopify app deploy` succeeds with the restored config. Do not uninstall the app, because this app processes uninstall webhooks.
+
 ## Troubleshooting Shopify App Proxy HTTP 404 (storefront)
 A Shopify-branded 404 at `https://YOUR-STORE/apps/admorph` means the storefront route is not currently registered as this app's proxy; a working request should be forwarded to `https://admorphai.onrender.com/apps/admorph` with Shopify's signed query parameters. The proxy backend exists in `app/routes/apps.admorph.tsx`; the frontend expects JSON on `/apps/admorph?ad_id=...&product_handle=...`.
 
