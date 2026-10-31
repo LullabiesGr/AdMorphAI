@@ -115,6 +115,13 @@ export default function Theme(){
          <p className="ad-muted">If the page remains unchanged, inspect the proxy response. It should contain the AI headline and benefits as JSON.</p>
          <a href={d.proxyLink||"#"} target="_blank" rel="noopener noreferrer" className="am-text-link">Test Shopify App Proxy response</a>
        </s-section>}
+       <s-section>
+         <SectionHead title="App Proxy troubleshooting"/>
+         <p className="ad-muted">If the test link above shows Shopify HTTP 404, Shopify has not routed <code>/apps/admorph</code> to this app yet. This is a Shopify app configuration issue, not an OpenAI issue.</p>
+         <div className="am-guide-row"><span>01</span><div><strong>Check the installed app's proxy URL</strong><p>Shopify Admin → Settings → Apps and sales channels → AdMorph AI → App proxy. The path must be <code>/apps/admorph</code>. Merchants can customize this path per store.</p></div></div>
+         <div className="am-guide-row"><span>02</span><div><strong>Publish the Shopify app configuration</strong><p>From the project folder run <code>git pull origin main</code>, then <code>shopify app config link</code> (select your existing AdMorph AI app), and <code>shopify app deploy</code>. The Render deploy does not configure Shopify App Proxy.</p></div></div>
+         <div className="am-guide-row"><span>03</span><div><strong>Check permissions and retest</strong><p>Confirm that the installed app has <code>write_app_proxy</code> access, approve updated access if Shopify prompts, and reopen the Test Shopify App Proxy response link. A working response contains JSON with the published headline.</p></div></div>
+       </s-section>
        <s-section><SectionHead title="Publishing status"/>
          <div className="am-detail-row"><span>Published theme</span><State text={check.status==="active"?"Active":check.status==="checking"?"Checking":check.status==="error"?"Unknown":"Not active"} kind={check.status==="active"?"success":"warning"}/></div>
          <div className="am-detail-row"><span>Merchant confirmation</span><State text={d.themeConfirmedAt?"Confirmed":"Pending"} kind={d.themeConfirmedAt?"success":"neutral"}/></div>

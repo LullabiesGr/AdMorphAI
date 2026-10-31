@@ -39,3 +39,15 @@ Bolt.new can develop this repository, but first confirm its chosen production ho
 - Add billing, advanced experimentation and robust Meta pagination/synchronization.
 - Meta `ads_management` permission only if merchant explicitly requests in-app editing of ad URLs.
 - Add integration tests, CI, and monitoring before App Store submission.
+
+## Troubleshooting Shopify App Proxy HTTP 404 (storefront)
+A Shopify-branded 404 at `https://YOUR-STORE/apps/admorph` means the storefront route is not currently registered as this app's proxy; a working request should be forwarded to `https://admorphai.onrender.com/apps/admorph` with Shopify's signed query parameters. The proxy backend exists in `app/routes/apps.admorph.tsx`; the frontend expects JSON on `/apps/admorph?ad_id=...&product_handle=...`.
+
+1. In the Shopify Dev Dashboard select the *existing* AdMorph AI app and inspect the **active version**. Verify it includes an **App proxy** with destination `https://admorphai.onrender.com/apps/admorph`, prefix `apps`, and subpath `admorph`, plus `read_products,write_app_proxy` access scopes.
+2. From a current checkout of the repo, run `shopify app config link` and explicitly select the **existing installed app**. This populates the `client_id` missing in the checked-in starter TOML; never link a newly created app by mistake.
+3. Run `shopify app deploy` to publish the app configuration and Theme App Extension to Shopify (separate from Render). Approve new access scopes if Shopify asks.
+4. In the merchant's Shopify Admin, check **Settings → Apps and sales channels → AdMorph AI → App proxy → Customize URL**, because any previously customized prefix/subpath is not overwritten by new Shopify versions. Confirm the effective storefront path is `/apps/admorph`. Do not uninstall or reinstall the app casually; the uninstall webhook deletes its shop data.
+5. Open `https://YOUR-STORE/apps/admorph?ad_id=KNOWN_PUBLISHED_AD&product_handle=KNOWN_PRODUCT` in a browser. The expected response is JSON `{"content":{"headline":"...",...}}`. An HTTP 404 points to Shopify proxy registration/path, while a successful HTTP response containing `{"content":null}` indicates a backend session/lookup/validation issue.
+6. After the proxy responds with AI copy, activate the AdMorph product Theme App Block in the published product template and use `?admorph_ad=KNOWN_PUBLISHED_AD` on the product URL. **Do not attempt to bypass Shopify proxy signatures or expose an unauthenticated cross-store API.**
+
+Shopify reference: https://shopify.dev/docs/apps/build/online-store/app-proxies

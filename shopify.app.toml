@@ -1,4 +1,5 @@
-# Link to the real Shopify app with: npm run config:link
+# Run `shopify app config link` and select the EXISTING AdMorph AI app before deploy.
+# The client_id is populated by Shopify CLI when linking the app.
 client_id = ""
 name = "AdMorph AI"
 embedded = true
@@ -30,6 +31,7 @@ api_version = "2026-10"
   uri = "/webhooks/shop/redact"
 
 [app_proxy]
-url = "/apps/admorph"
+# Production backend endpoint. Changes here only take effect after `shopify app deploy`.
+url = "https://admorphai.onrender.com/apps/admorph"
 prefix = "apps"
 subpath = "admorph"
