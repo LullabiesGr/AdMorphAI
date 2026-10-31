@@ -99,6 +99,7 @@ export async function generateVisualDirection(input:{
  const prompt=[
    "You are an art director for a Shopify store. Choose an editorial visual system for one existing ad-matched campaign.",
    "Respond with short design mood, rationale, composition, palette and imageFit.",
+   "IMPORTANT: mood must be at most 65 characters, rationale at most 200 characters.",
    "The ACTUAL product photo from Shopify will be used, not AI-generated or altered merchandise.",
    "Only use the palette values sand, slate, rose, sage, midnight.",
    "Only use composition split, spotlight or gallery. Only use imageFit cover or contain.",
@@ -134,7 +135,19 @@ export async function generateVisualDirection(input:{
    const text=(data.output||[]).flatMap((x:{content?:Array<{type:string;text?:string}>})=>x.content||[])
      .find((x:{type:string})=>x.type==="output_text")?.text;
    if(!text)throw new Error("OpenAI did not provide art direction");
-   return visualDirectionSchema.parse(JSON.parse(text));
+   const raw=JSON.parse(text);
+   // LLM outputs are unconstrained in string length by JSON schema. Normalize
+   // explanatory fields before validation instead of surfacing Zod internals.
+   const shorten=(value:unknown,max:number,fallback:string)=>{
+     const content=typeof value==="string"?value.trim():"";
+     return (content.length>=3?content:fallback).slice(0,max);
+   };
+   return visualDirectionSchema.parse({
+     ...raw,
+     mood:shorten(raw.mood,65,"Product-led editorial design"),
+     rationale:shorten(raw.rationale,200,
+       "Matches the ad aesthetic while keeping the authentic Shopify product image visible.")
+   });
  };
  try{return await run(content);}catch(error){
    if(content.length===1)throw error;

@@ -270,7 +270,14 @@ export const action=async({request}:ActionFunctionArgs)=>{
     return {ok:true,message:"Experience unpublished."};
   }
   return {ok:false,message:"Unsupported action."};
- }catch(e){return {ok:false,message:e instanceof Error?e.message:"Action failed."};}
+ }catch(e){
+   console.error("[AdMorph campaigns] operation failed",e);
+   // Never expose raw Zod issue objects or API stack traces in merchant-facing UI.
+   if(e instanceof Error && e.name==="ZodError"){
+      return {ok:false,message:"The AI generated text that was too long. Please retry. Your live campaign was not changed."};
+   }
+   return {ok:false,message:e instanceof Error?e.message:"This action could not be completed. Please try again."};
+ }
 };
 
 type Filter="all"|"review"|"published"|"generate";
