@@ -81,7 +81,7 @@ export async function runAutomationBatch(shop:string,admin:ShopifyAdmin,cursor:s
 }
 
 export async function publishAllDrafts(shop:string){
- const records=await prisma.campaign.findMany({where:{shop,status:"DRAFT",content:{not:"null" as any}},select:{id:true,content:true},take:100});
+ const records=await prisma.campaign.findMany({where:{shop,status:"DRAFT"},select:{id:true,content:true},take:100});
  const ids=records.filter(r=>variantSchema.safeParse(r.content).success).map(r=>r.id);
  if(ids.length)await prisma.campaign.updateMany({where:{shop,id:{in:ids}},data:{status:"PUBLISHED"}});
  return ids.length;
