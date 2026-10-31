@@ -365,7 +365,7 @@ export default function Campaigns(){
                 <input type="hidden" name="intent" value="generate_visual"/>
                 <input type="hidden" name="id" value={c.id}/>
                 <button type="submit" className="ad-btn ghost">AI Suggest New Visual Direction</button>
-              </Form>
+              </Form>}
               {valid.success&&((c.status==="DRAFT")||Boolean(c.draftContent))&&<Form method="post">
                  <input type="hidden" name="intent" value="publish"/><input type="hidden" name="id" value={c.id}/>
                  <button type="submit" className="ad-btn">Approve & publish {isExperience(valid.data)?"Experience 2.0":"draft"}</button></Form>}
