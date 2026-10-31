@@ -1,3 +1,6 @@
+.ad-topnav{display:flex;gap:18px;align-items:center;padding:14px 20px;margin-bottom:14px;background:white;border-bottom:1px solid #ebedf1}
+.ad-topnav a{font-size:13px;font-weight:650;color:#4c5d75;text-decoration:none}
+.ad-topnav a:hover{color:#151f32}
 :root{font-family:Inter,system-ui,-apple-system,sans-serif;color:#20252b;}
 .ad-hero{position:relative;overflow:hidden;border-radius:18px;padding:34px;color:white;background:linear-gradient(115deg,#101b30 0%,#20395e 55%,#443978 100%);margin-bottom:24px;}
 .ad-hero h1{font-weight:800;letter-spacing:-1.2px;font-size:34px;margin:0 0 10px}
