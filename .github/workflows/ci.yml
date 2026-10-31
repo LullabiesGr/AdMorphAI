@@ -16,6 +16,19 @@ jobs:
       DIRECT_URL: postgresql://test:test@localhost:5432/admorph
     steps:
       - uses: actions/checkout@v4
+      - name: Validate PowerShell script syntax
+        shell: pwsh
+        run: |
+          $paths = @('scripts/check-shopify-config.ps1', 'scripts/repair-shopify-app-proxy.ps1')
+          foreach ($path in $paths) {
+            $tokens = $null
+            $parseErrors = $null
+            [void][System.Management.Automation.Language.Parser]::ParseFile((Resolve-Path $path).Path, [ref]$tokens, [ref]$parseErrors)
+            if ($parseErrors.Count -gt 0) {
+              $parseErrors | ForEach-Object { Write-Host $_.ToString() }
+              throw "$path contains invalid PowerShell syntax."
+            }
+          }
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
