@@ -18,11 +18,12 @@ export const loader=async({request}:LoaderFunctionArgs)=>{
  console.info("[AdMorph campaigns] loader entered");
  const {session}=await authenticate.admin(request);
  const [ads,campaigns]=await Promise.all([
-  prisma.metaAd.findMany({where:{shop:session.shop},orderBy:{updatedAt:"desc"},take:50}),
-  prisma.campaign.findMany({where:{shop:session.shop},orderBy:{updatedAt:"desc"},take:100})
+  prisma.metaAd.findMany({where:{shop:session.shop},orderBy:{updatedAt:"desc"},take:200}),
+  prisma.campaign.findMany({where:{shop:session.shop},orderBy:{updatedAt:"desc"},take:200})
  ]);
  console.info("[AdMorph campaigns] loader complete",{ads:ads.length,campaigns:campaigns.length});
  return {
+   shop:session.shop,
    ads:ads.map(ad=>({id:ad.adId,name:ad.name,status:ad.status,creative:metaCreativeCopy(ad.creative)})),
    campaigns
  };
@@ -171,7 +172,23 @@ export default function Campaigns(){
  const [search,setSearch]=useState("");
  const [selected,setSelected]=useState<string[]>([]);
  const [expanded,setExpanded]=useState<string|null>(null);
- const draft=d.campaigns.filter(c=>c.status==="DRAFT"&&hasValidCampaignContent(c.draftContent||c.content)).length;
+ const [manualAdId,setManualAdId]=useState("");
+ const adInventory=useMemo(()=>d.ads.map(ad=>{
+    const linked=d.campaigns.filter(c=>c.metaAdId===ad.id);
+    return {...ad,linked,hasAI:linked.some(c=>hasValidCampaignContent(c.draftContent||c.content))};
+ }),[d.ads,d.campaigns]);
+ const unmatchedAds=adInventory.filter(ad=>!ad.linked.length);
+ function openExperience(id:string){
+   setExpanded(id);
+   setFilter("all");
+   setSearch("");
+   document.getElementById("campaign-library")?.scrollIntoView({behavior:"smooth",block:"start"});
+ }
+ function chooseAdForMapping(adId:string){
+   setManualAdId(adId);
+   document.getElementById("manual-ad-match")?.scrollIntoView({behavior:"smooth",block:"start"});
+ }
+ const draft=d.campaigns.filter(c=>(c.status==="DRAFT"||Boolean(c.draftContent))&&hasValidCampaignContent(c.draftContent||c.content)).length;
  const published=d.campaigns.filter(c=>c.status==="PUBLISHED").length;
  const pending=d.campaigns.filter(c=>!hasValidCampaignContent(c.draftContent||c.content)).length;
  const visible=useMemo(()=>d.campaigns.filter(c=>{
@@ -193,13 +210,15 @@ export default function Campaigns(){
    <s-button slot="primary-action" href="/app/autopilot" variant="primary">Run AI Autopilot</s-button>
    <div className="am-container">
     <PageIntro eyebrow="CONTENT STUDIO" title="Review and publish your AI experiences"
-      description="Inspect the copy behind each Meta ad and keep control of what appears in your store."/>
+      description="See every imported Meta ad, inspect its AI-generated experience, and review any ads that still need product matching."/>
     {a&&<s-banner tone={a.ok?"success":"critical"}>{a.message}</s-banner>}
+    {unmatchedAds.length>0&&<s-banner tone="info">{unmatchedAds.length} imported Meta ads do not yet have an associated Shopify product. Their AI previews cannot exist until you match a product and generate content. See All Meta Ads below.</s-banner>}
     <div className="am-stats am-stats-three">
-      <Stat label="Campaigns" value={d.campaigns.length} note="Latest 100"/>
-      <Stat label="Ready for review" value={draft} note="Valid AI drafts"/>
-      <Stat label="Published" value={published} note="Live personalized content" tone="success"/>
+      <Stat label="Matched campaigns" value={d.campaigns.length} note="Linked Shopify products"/>
+      <Stat label="Needs product matching" value={unmatchedAds.length} note="Imported ads without campaign"/>
+      <Stat label="Published experiences" value={published} note="Available on the matched product" tone="success"/>
     </div>
+    <div id="campaign-library"/>
     <s-section>
       <SectionHead title="Campaign library" action={<State text={pending+" need AI copy"} kind={pending?"warning":"success"}/>}/>
       {d.campaigns.length===0 ? <Empty title="No AI campaigns yet" description="Connect Meta and run Autopilot to create your first personalized draft." href="/app/autopilot" label="Go to Autopilot"/> : <>
@@ -252,10 +271,22 @@ export default function Campaigns(){
         {expanded&&(()=>{
           const c=d.campaigns.find(c=>c.id===expanded);
           if(!c)return null;
-          const valid=variantSchema.safeParse(c.content);
+          // A v2 content object does not satisfy the legacy variant schema.
+          // Prefer a pending merchant draft but keep the published version available.
+          const valid=campaignContentSchema.safeParse(c.draftContent||c.content);
+          const publishedContent=campaignContentSchema.safeParse(c.content);
+          const originAd=d.ads.find(ad=>ad.id===c.metaAdId);
           return <div className="am-detail-panel">
             <div className="am-section-head"><h3>{c.productTitle}</h3><button type="button" className="am-table-toggle" onClick={()=>setExpanded(null)}>Close</button></div>
-            <p className="ad-muted">Meta ad: {c.metaAdId}</p>
+            <p className="ad-muted">Meta ad: {c.metaAdId}{originAd?.name?" · "+originAd.name:""}</p>
+            {originAd&&<div className="am-ad-source"><strong>Source Meta creative</strong><p>{originAd.creative.headline||originAd.creative.body||"No ad copy supplied by Meta."}</p>{originAd.creative.headline&&originAd.creative.body&&<p>{originAd.creative.body}</p>}</div>}
+            {c.status==="PUBLISHED"&&<a className="am-text-link" target="_blank" rel="noopener noreferrer" href={`https://${d.shop}/products/${encodeURIComponent(c.productHandle)}?admorph_ad=${encodeURIComponent(c.metaAdId)}`}>View published product experience</a>}
+            {c.draftContent&&publishedContent.success&&<details className="am-editor-details">
+              <summary>View current live experience (before pending changes)</summary>
+              {isExperience(publishedContent.data)?<ExperiencePreview content={publishedContent.data}/>:
+                <div className="ad-preview"><h3>{publishedContent.data.headline}</h3><p>{publishedContent.data.subheadline}</p><ul>{publishedContent.data.benefits.map((b,i)=><li key={i}>{b}</li>)}</ul></div>}
+            </details>}
+            {!valid.success&&<s-banner tone="warning">No AI content generated for this campaign. Match a relevant Shopify product, then use Generate Experience 2.0 to create a draft.</s-banner>}
             {c.draftContent&&<s-banner tone="info">This is an unpublished update. The existing experience remains live until you approve the draft.</s-banner>}
             {valid.success && isExperience(valid.data) && <>
               <ExperiencePreview content={valid.data}/>
@@ -292,12 +323,34 @@ export default function Campaigns(){
             </div>
           </div>;
         })()}
-        <p className="ad-muted">Showing up to 100 latest campaigns. Bulk actions only apply to the selected campaigns.</p>
+        <p className="ad-muted">Showing up to 200 recent campaigns. Bulk actions only apply to your selected campaigns. Every campaign with generated AI content has an Open preview.</p>
       </>}
     </s-section>
     <s-section>
+      <SectionHead title="All Meta Ads" action={<State text={unmatchedAds.length+" without a product"} kind={unmatchedAds.length?"warning":"success"}/>}/>
+      <p className="ad-muted">Every imported ad from Meta appears here, including paused ads and those that promote a non-Shopify destination. A Meta ad is not itself an AI campaign until a Shopify product has been matched.</p>
+      {!adInventory.length?<Empty title="No Meta ads imported" description="Connect Meta and run Autopilot to import advertising creatives." href="/app/meta" label="Open Meta connection"/>:
+       <div className="am-table-scroll"><table className="ad-table am-campaign-table">
+        <thead><tr><th scope="col">Meta ad</th><th scope="col">Meta status</th><th scope="col">AI experience</th><th scope="col">Action</th></tr></thead>
+        <tbody>{adInventory.map(ad=><tr key={ad.id}>
+           <td><strong>{ad.name||"Untitled ad"}</strong><small className="am-table-subtitle">{ad.id}</small>
+            {(ad.creative.headline||ad.creative.body)&&<small className="am-table-subtitle">{(ad.creative.headline||ad.creative.body).slice(0,125)}</small>}
+           </td>
+           <td><State text={ad.status==="ACTIVE"?"Active":ad.status.replace(/_/g," ").toLowerCase()} kind={ad.status==="ACTIVE"?"success":"neutral"}/></td>
+           <td>{ad.linked.length? <span>{ad.linked.length} linked campaign{ad.linked.length===1?"":"s"}{ad.hasAI?" · AI generated":" · Awaiting generation"}</span> :
+             <State text="Not matched to Shopify" kind="warning"/>}</td>
+           <td><div className="am-inline-actions">
+             {ad.linked.map(c=><button key={c.id} type="button" className="am-table-toggle" onClick={()=>openExperience(c.id)}>{hasValidCampaignContent(c.draftContent||c.content)?"View AI experience":"Open campaign"}</button>)}
+             <button type="button" className="am-table-toggle" onClick={()=>chooseAdForMapping(ad.id)}>Match to product</button>
+           </div></td>
+        </tr>)}</tbody>
+       </table></div>}
+      <p className="ad-muted">Ads with no verified product link are never matched automatically. Manual matching requires choosing the actual promoted Shopify product; unrelated external website ads should not be paired.</p>
+    </s-section>
+    <div id="manual-ad-match"/>
+    <s-section>
       <SectionHead title="Manually match an ad"/>
-      <p className="ad-muted">For ads that Autopilot cannot match, choose the correct product yourself.</p>
+      <p className="ad-muted">Use this only when the ad genuinely promotes a product in this Shopify store. Load products, select the Meta ad and product, then generate the experience in Campaign library.</p>
       <catalog.Form method="post" style={{margin:"14px 0"}}>
         <input type="hidden" name="intent" value="load_products"/>
         <button type="submit" className="ad-btn ghost" disabled={catalog.state!=="idle"}>{catalog.state==="idle"?"Load Shopify products":"Loading products..."}</button>
@@ -307,7 +360,7 @@ export default function Campaigns(){
         <input type="hidden" name="intent" value="create"/>
         <div className="ad-form-row">
           <label className="ad-label" htmlFor="adId">Meta advertisement
-            <select className="ad-input" id="adId" name="adId" required>
+            <select className="ad-input" id="adId" name="adId" value={manualAdId} onChange={e=>setManualAdId(e.target.value)} required>
               <option value="">Select ad</option>{d.ads.map(ad=><option key={ad.id} value={ad.id}>{ad.name} ({ad.id})</option>)}
             </select>
           </label>
