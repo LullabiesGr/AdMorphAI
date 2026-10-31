@@ -1,6 +1,6 @@
 import {useMemo,useState} from "react";
 import type {ActionFunctionArgs,LoaderFunctionArgs} from "react-router";
-import {Form,Link,useActionData,useLoaderData} from "react-router";
+import {Form,Link,useActionData,useFetcher,useLoaderData} from "react-router";
 import prisma from "../db.server";
 import {authenticate} from "../shopify.server";
 import {listProducts,getProduct} from "../services/products.server";
@@ -10,15 +10,18 @@ import {metaCreativeCopy} from "../services/meta.server";
 import {PageIntro,Stat,State,SectionHead,Empty} from "../components/dashboard";
 
 export const loader=async({request}:LoaderFunctionArgs)=>{
- const {admin,session}=await authenticate.admin(request);
- const [ads,products,campaigns]=await Promise.all([
+ // Do not load Shopify products on page entry. Admin GraphQL can require session
+ // refresh, and an API-level 200 Response must not blank the entire campaign UI.
+ console.info("[AdMorph campaigns] loader entered");
+ const {session}=await authenticate.admin(request);
+ const [ads,campaigns]=await Promise.all([
   prisma.metaAd.findMany({where:{shop:session.shop},orderBy:{updatedAt:"desc"},take:50}),
-  listProducts(admin),
   prisma.campaign.findMany({where:{shop:session.shop},orderBy:{updatedAt:"desc"},take:100})
  ]);
+ console.info("[AdMorph campaigns] loader complete",{ads:ads.length,campaigns:campaigns.length});
  return {
    ads:ads.map(ad=>({id:ad.adId,name:ad.name,status:ad.status,creative:metaCreativeCopy(ad.creative)})),
-   products,campaigns
+   campaigns
  };
 };
 
@@ -27,6 +30,10 @@ export const action=async({request}:ActionFunctionArgs)=>{
  const data=await request.formData(),intent=String(data.get("intent")||"");
  const shop=session.shop;
  try {
+  if(intent==="load_products"){
+    const products=await listProducts(admin);
+    return {ok:true,message:products.length+" active Shopify products loaded.",products};
+  }
   if(intent==="create"){
     const adId=String(data.get("adId")||""),productId=String(data.get("productId")||"");
     const ad=await prisma.metaAd.findUnique({where:{shop_adId:{shop,adId}}});
@@ -105,6 +112,8 @@ export const action=async({request}:ActionFunctionArgs)=>{
 type Filter="all"|"review"|"published"|"generate";
 export default function Campaigns(){
  const d=useLoaderData<typeof loader>(),a=useActionData<typeof action>();
+ const catalog=useFetcher<typeof action>();
+ const products=(catalog.data && "products" in catalog.data && Array.isArray(catalog.data.products)) ? catalog.data.products : [];
  const [filter,setFilter]=useState<Filter>("all");
  const [search,setSearch]=useState("");
  const [selected,setSelected]=useState<string[]>([]);
@@ -219,6 +228,11 @@ export default function Campaigns(){
     <s-section>
       <SectionHead title="Manually match an ad"/>
       <p className="ad-muted">For ads that Autopilot cannot match, choose the correct product yourself.</p>
+      <catalog.Form method="post" style={{margin:"14px 0"}}>
+        <input type="hidden" name="intent" value="load_products"/>
+        <button type="submit" className="ad-btn ghost" disabled={catalog.state!=="idle"}>{catalog.state==="idle"?"Load Shopify products":"Loading products..."}</button>
+        {catalog.data&&<span className="ad-muted" style={{marginLeft:12}} role="status">{catalog.data.message}</span>}
+      </catalog.Form>
       <Form method="post">
         <input type="hidden" name="intent" value="create"/>
         <div className="ad-form-row">
@@ -229,11 +243,11 @@ export default function Campaigns(){
           </label>
           <label className="ad-label" htmlFor="productId">Shopify product
             <select className="ad-input" id="productId" name="productId" required>
-              <option value="">Select product</option>{d.products.map(p=><option key={p.id} value={p.id}>{p.title}</option>)}
+              <option value="">Select product</option>{products.map(p=><option key={p.id} value={p.id}>{p.title}</option>)}
             </select>
           </label>
         </div>
-        <button type="submit" className="ad-btn ghost" disabled={!d.ads.length||!d.products.length}>Create draft campaign</button>
+        <button type="submit" className="ad-btn ghost" disabled={!d.ads.length||!products.length}>Create draft campaign</button>
       </Form>
       <p className="ad-muted">Then generate, review and publish copy. Activate the <Link to="/app/theme">theme block</Link> for storefront display.</p>
     </s-section>
