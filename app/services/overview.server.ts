@@ -27,8 +27,12 @@ export async function getMerchantOverview(shop:string){
  };
 }
 
-export function themeEditorUrl(shop:string){
+/** Prefer a dedicated apps section for custom themes whose product section may not support @app. */
+export function themeEditorUrl(shop:string,placement:"newAppsSection"|"mainSection"="newAppsSection"){
  const clientId=process.env.SHOPIFY_API_KEY||"";
- return "https://"+shop+"/admin/themes/current/editor?template=product&addAppBlockId="+
-  encodeURIComponent(clientId+"/admorph-product")+"&target=mainSection";
+ const editor=new URL("https://"+shop+"/admin/themes/current/editor");
+ editor.searchParams.set("template","product");
+ editor.searchParams.set("addAppBlockId",clientId+"/admorph-product");
+ editor.searchParams.set("target",placement);
+ return editor.toString();
 }

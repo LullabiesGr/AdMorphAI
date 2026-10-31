@@ -15,7 +15,7 @@ export const loader=async({request}:LoaderFunctionArgs)=>{
  const base="https://"+session.shop;
  const testLink=testCampaign ? base+"/products/"+encodeURIComponent(testCampaign.productHandle)+"?admorph_ad="+encodeURIComponent(testCampaign.metaAdId) : null;
  const proxyLink=testCampaign ? base+"/apps/admorph?ad_id="+encodeURIComponent(testCampaign.metaAdId)+"&product_handle="+encodeURIComponent(testCampaign.productHandle) : null;
- return {themeConfirmedAt:setting?.themeConfirmedAt||null,published,editorUrl:themeEditorUrl(session.shop),
+ return {themeConfirmedAt:setting?.themeConfirmedAt||null,published,editorUrl:themeEditorUrl(session.shop),inlineEditorUrl:themeEditorUrl(session.shop,"mainSection"),
   testProduct:testCampaign?.productTitle||null,testLink,proxyLink};
 };
 export const action=async({request}:ActionFunctionArgs)=>{
@@ -88,7 +88,9 @@ export default function Theme(){
         <div className="am-guide-row"><span>01</span><div><strong>Open the Shopify Theme Editor</strong><p>Use the button below. AdMorph will open the product template and request to add its app block.</p></div></div>
         <div className="am-guide-row"><span>02</span><div><strong>Place the personalization block</strong><p>Position AdMorph near the product description, benefits or Add to Cart area.</p></div></div>
         <div className="am-guide-row"><span>03</span><div><strong>Save the theme</strong><p>Press Save in Shopify. Return to AdMorph and confirm the setup below.</p></div></div>
-        <a className="ad-btn am-standalone-action" href={d.editorUrl} target="_top">Open Shopify Theme Editor</a>
+        <a className="ad-btn am-standalone-action" href={d.editorUrl} target="_top">Add AdMorph block to product page</a>
+        <p className="ad-muted">This opens a dedicated Apps section in the published theme, which works even when a custom product section does not support app blocks. Press <strong>Save</strong> in Shopify.</p>
+        <p className="ad-muted">Prefer the block directly beside the product description? <a href={d.inlineEditorUrl} target="_top">Try inserting inside the main product section</a> (requires theme support).</p>
        </s-section>
        <s-section>
         <SectionHead title="Mark setup complete"/>
