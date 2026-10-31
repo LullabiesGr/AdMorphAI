@@ -16,6 +16,14 @@ export const action=async({request}:ActionFunctionArgs)=>{
  const body=await request.formData();
  const intent=String(body.get("intent")||"");
  try {
+  if(intent==="disconnect"){
+    await prisma.$transaction([
+      prisma.campaign.deleteMany({where:{shop:session.shop}}),
+      prisma.metaAd.deleteMany({where:{shop:session.shop}}),
+      prisma.metaConnection.deleteMany({where:{shop:session.shop}})
+    ]);
+    return {ok:true,message:"Meta disconnected and imported ad data deleted."};
+  }
   if(intent==="select") {
    const accountId=String(body.get("account")||"");
    const meta=await prisma.metaConnection.findUnique({where:{shop:session.shop}});
@@ -52,6 +60,10 @@ export default function MetaPage(){
     <Form method="post"><input type="hidden" name="intent" value="import"/>
      <button type="submit" className="ad-btn" style={{marginTop:18}}>Sync Meta Ads</button>
     </Form>
+  </s-section>}
+  {data.connected&&<s-section heading="Disconnect and delete data">
+    <s-paragraph>Remove the Meta connection, imported ad data and associated AI campaigns for this shop.</s-paragraph>
+    <Form method="post"><input type="hidden" name="intent" value="disconnect"/><button className="ad-btn ghost" type="submit">Disconnect Meta and delete imported data</button></Form>
   </s-section>}
   <s-section heading="Import scope"><s-paragraph>Imports the first 50 ads for the selected account. Does not modify campaigns, tracking parameters or Meta Pixel. Meta App Review may be required for third-party advertisers.</s-paragraph></s-section>
  </s-page>;
