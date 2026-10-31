@@ -32,7 +32,7 @@ function Get-TomlSection {
 $files = @(Get-ChildItem -Path $root -Filter "shopify.app*.toml" -File | Sort-Object Name)
 if ($files.Count -eq 0) { throw "No shopify.app*.toml files found in $root" }
 
-Write-Host "AdMorph AI — Shopify configuration preflight" -ForegroundColor Cyan
+Write-Host "AdMorph AI - Shopify configuration preflight" -ForegroundColor Cyan
 Write-Host "Found $($files.Count) Shopify app configuration file(s)."
 $readyConfigs = @()
 
