@@ -39,3 +39,22 @@ test("visual direction allows only supported safe design presets",async()=>{
  assert.equal(visualDirectionSchema.safeParse(good).success,true);
  assert.equal(visualDirectionSchema.safeParse({...good,palette:"evil-css"}).success,false);
 });
+
+test("AI visual rationale longer than 200 characters is clipped safely",async()=>{
+ const {normalizeVisualDirection}=await import("../app/lib/visual-direction.ts");
+ const result=normalizeVisualDirection({
+   composition:"spotlight",palette:"sage",imageFit:"contain",
+   mood:"An incredibly detailed visual direction ".repeat(10),
+   rationale:"This ad needs a grounded but elegant editorial layout. ".repeat(10)
+ });
+ assert.equal(result.mood.length,65);
+ assert.equal(result.rationale.length,200);
+});
+test("AI explanation too short is replaced with safe, human-readable fallback",async()=>{
+ const {normalizeVisualDirection}=await import("../app/lib/visual-direction.ts");
+ const result=normalizeVisualDirection({
+   composition:"split",palette:"sand",imageFit:"cover",mood:"",rationale:"ok"
+ });
+ assert.ok(result.mood.length>=3);
+ assert.ok(result.rationale.length>=12);
+});

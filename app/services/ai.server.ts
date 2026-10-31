@@ -1,5 +1,6 @@
 import {metaCreativeCopy} from "./meta.server";
-import {experienceSchema,visualDirectionSchema,type Experience,type VisualDirection} from "../lib/experience";
+import {experienceSchema,type Experience,type VisualDirection} from "../lib/experience";
+import {normalizeVisualDirection} from "../lib/visual-direction";
 
 const textField={type:"string"} as const;
 const jsonSchema={
@@ -77,7 +78,10 @@ export async function generateExperience(input:{
    if(!response.ok)throw new Error("OpenAI: "+(data.error?.message||response.statusText));
    const text=(data.output||[]).flatMap((o:{content?:Array<{type:string;text?:string}>})=>o.content||[]).find((c:{type:string})=>c.type==="output_text")?.text;
    if(!text)throw new Error("OpenAI did not return generated experience");
-   return experienceSchema.parse(JSON.parse(text));
+   const generated=JSON.parse(text);
+   if(generated&&typeof generated==="object"&&generated.visual)
+     generated.visual=normalizeVisualDirection(generated.visual);
+   return experienceSchema.parse(generated);
  }
  try{return await request(baseContent);}
  catch(error){
@@ -135,19 +139,7 @@ export async function generateVisualDirection(input:{
    const text=(data.output||[]).flatMap((x:{content?:Array<{type:string;text?:string}>})=>x.content||[])
      .find((x:{type:string})=>x.type==="output_text")?.text;
    if(!text)throw new Error("OpenAI did not provide art direction");
-   const raw=JSON.parse(text);
-   // LLM outputs are unconstrained in string length by JSON schema. Normalize
-   // explanatory fields before validation instead of surfacing Zod internals.
-   const shorten=(value:unknown,max:number,fallback:string)=>{
-     const content=typeof value==="string"?value.trim():"";
-     return (content.length>=3?content:fallback).slice(0,max);
-   };
-   return visualDirectionSchema.parse({
-     ...raw,
-     mood:shorten(raw.mood,65,"Product-led editorial design"),
-     rationale:shorten(raw.rationale,200,
-       "Matches the ad aesthetic while keeping the authentic Shopify product image visible.")
-   });
+   return normalizeVisualDirection(JSON.parse(text));
  };
  try{return await run(content);}catch(error){
    if(content.length===1)throw error;

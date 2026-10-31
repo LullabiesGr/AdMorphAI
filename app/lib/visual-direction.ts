@@ -17,3 +17,19 @@ export function resolveVisualDirection(data:{visual?:VisualDirection}):VisualDir
  return data.visual||defaultVisualDirection;
 }
 
+
+/** Convert LLM explanations to stable, merchant-safe lengths before validation. */
+export function normalizeVisualDirection(input:unknown):VisualDirection{
+ const raw=input&&typeof input==="object"&&!Array.isArray(input)?input as Record<string,unknown>:{};
+ const bound=(value:unknown,min:number,max:number,fallback:string)=>{
+  const text=typeof value==="string"?value.trim():"";
+  return (text.length<min?fallback:text).slice(0,max);
+ };
+ return visualDirectionSchema.parse({
+  composition:raw.composition,
+  palette:raw.palette,
+  imageFit:raw.imageFit,
+  mood:bound(raw.mood,3,65,defaultVisualDirection.mood),
+  rationale:bound(raw.rationale,12,200,defaultVisualDirection.rationale)
+ });
+}
