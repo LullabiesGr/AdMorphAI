@@ -45,7 +45,7 @@ async function runStorefront({query="",withManual=false}={}){
  return {auto,manual,requestUrls,events};
 }
 test("theme embed registers with the correct Shopify app target",()=>{
- const schema=JSON.parse(liquid.match(/{%\\s*schema\\s*%}([\\s\\S]*?){%\\s*endschema\\s*%}/)[1]);
+ const schema=JSON.parse(liquid.match(/{%\s*schema\s*%}([\s\S]*?){%\s*endschema\s*%}/)[1]);
  assert.equal(schema.target,"body");
  assert.equal(schema.javascript,"admorph.js");
  assert.deepEqual(schema.enabled_on.templates,["product"]);
