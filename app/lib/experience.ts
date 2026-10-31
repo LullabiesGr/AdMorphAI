@@ -6,6 +6,7 @@ export const experienceSchema=z.object({
  version:z.literal("2.0"),
  angle:z.string().min(3).max(90),
  layout:z.enum(["editorial","minimal","bold"]),
+ visual:visualDirectionSchema.optional(),
  hero:z.object({
    eyebrow:z.string().min(2).max(52),
    headline:z.string().min(8).max(120),
@@ -30,6 +31,23 @@ export const experienceSchema=z.object({
  })
 });
 export type Experience=z.infer<typeof experienceSchema>;
+
+/** Design direction is a controlled, product-safe visual system; no synthetic product photos. */
+export const visualDirectionSchema=z.object({
+ composition:z.enum(["split","spotlight","gallery"]),
+ palette:z.enum(["sand","slate","rose","sage","midnight"]),
+ imageFit:z.enum(["cover","contain"]),
+ mood:z.string().min(3).max(65),
+ rationale:z.string().min(12).max(200)
+});
+export type VisualDirection=z.infer<typeof visualDirectionSchema>;
+export const defaultVisualDirection:VisualDirection={
+ composition:"split",palette:"sand",imageFit:"cover",
+ mood:"Editorial",rationale:"A neutral product-led layout using the original Shopify product photography."
+};
+export function resolveVisualDirection(data:{visual?:VisualDirection}):VisualDirection{
+ return data.visual||defaultVisualDirection;
+}
 
 /** Already-published v1 campaigns remain valid and render without migration. */
 export const campaignContentSchema=z.union([experienceSchema,variantSchema]);
