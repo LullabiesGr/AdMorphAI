@@ -78,7 +78,7 @@ export async function connectMeta(shop:string,code:string) {
  await db.metaConnection.upsert({
   where:{shop},
   create:{shop,encryptedToken:encrypt(token),tokenExpiresAt:expiresAt,accounts,selectedAccountId:accounts.length===1?accounts[0].id:null},
-  update:{encryptedToken:encrypt(token),tokenExpiresAt:expiresAt,accounts,selectedAccountId:null}
+  update:{encryptedToken:encrypt(token),tokenExpiresAt:expiresAt,accounts,selectedAccountId:accounts.length===1?accounts[0].id:null}
  });
  return accounts;
 }
