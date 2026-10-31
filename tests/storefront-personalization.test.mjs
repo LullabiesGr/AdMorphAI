@@ -22,7 +22,7 @@ async function runStorefront({query="",withManual=false}={}){
     setAttribute(name,value){this[name]=value;}
  });
  const auto=makeRoot(true),manual=withManual?makeRoot(false):null;
- const anchor={insertAdjacentElement(position,element){element.movedAfterTitle=position==="afterend";}};
+ const anchor={parentNode:{},insertAdjacentElement(position,element){element.movedAfterTitle=position==="afterend";}};
  const document={
    readyState:"complete",
    querySelector(selector){return selector==="main h1"?anchor:null;},
