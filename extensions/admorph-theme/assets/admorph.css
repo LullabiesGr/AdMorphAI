@@ -1,11 +1,48 @@
-.admorph-widget{padding:22px 24px;border-radius:12px;background:linear-gradient(135deg,#f7f9fd,#f2f5fb);border:1px solid #e6ebf4;color:#17263c;margin:14px 0;font-family:inherit}
-.admorph-widget[hidden]{display:none!important}
-.admorph-headline{font-family:inherit;margin:0 0 9px;font-size:clamp(1.35rem,2.2vw,1.8rem);line-height:1.18;font-weight:750;letter-spacing:-.025em}
-.admorph-subheadline{margin:0 0 12px;font-size:1rem;line-height:1.55}
-.admorph-benefits{list-style:disc;padding-left:20px;margin:0;line-height:1.6;font-size:.93rem}
-.admorph-benefits li{margin:4px 0}
-
-.admorph-editor-preview{padding:18px;border:1px dashed #96a7c0;border-radius:11px;background:#f3f7fc;font:14px/1.6 system-ui;color:#233959}
-.admorph-editor-preview strong{font-size:16px;font-weight:700}
-.admorph-editor-preview p{margin:8px 0}
-.admorph-editor-preview code{font:12px monospace;overflow-wrap:anywhere}
+.admorph-widget {
+  box-sizing: border-box;
+  background: transparent;
+  color: inherit;
+  border: 0;
+  border-top: 1px solid rgba(75, 75, 75, .22);
+  margin: 18px 0;
+  padding: 18px 0 8px;
+  font-family: inherit;
+  font-size: inherit;
+  text-align: inherit;
+  max-width: 100%;
+}
+.admorph-widget[hidden] { display: none !important; }
+.admorph-widget .admorph-headline {
+  font-family: inherit;
+  color: inherit;
+  font-size: clamp(1.25rem, 2vw, 1.65rem);
+  font-weight: 600;
+  line-height: 1.24;
+  letter-spacing: -.02em;
+  margin: 0 0 9px;
+  padding: 0;
+}
+.admorph-widget .admorph-subheadline {
+  font: inherit;
+  line-height: 1.55;
+  margin: 0 0 12px;
+}
+.admorph-widget .admorph-benefits {
+  display: block;
+  list-style: disc outside;
+  padding: 0 0 0 20px;
+  margin: 0 0 6px;
+  font: inherit;
+  line-height: 1.65;
+}
+.admorph-widget .admorph-benefits li { list-style: disc outside; padding: 0; margin: 5px 0; }
+.admorph-widget .admorph-editor-preview {
+  padding: 13px 15px;
+  border: 1px dashed #9aa9bd;
+  border-radius: 7px;
+  background: #f5f7fa;
+  color: #2b405b;
+  font: 13px/1.5 system-ui, sans-serif;
+}
+.admorph-widget .admorph-editor-preview strong { display: block; font-size: 14px; }
+.admorph-widget .admorph-editor-preview p { margin: 8px 0 0; }

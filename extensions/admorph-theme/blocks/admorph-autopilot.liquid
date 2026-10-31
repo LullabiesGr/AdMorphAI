@@ -1,0 +1,31 @@
+{% if request.page_type == 'product' and product %}
+  <div
+    class="admorph-widget admorph-auto-slot"
+    data-product-handle="{{ product.handle | escape }}"
+    data-admorph-placement="{{ block.settings.placement | escape }}"
+    aria-live="polite"
+    hidden
+  ></div>
+{% endif %}
+{% schema %}
+{
+  "name": "AdMorph Auto Placement",
+  "target": "body",
+  "javascript": "admorph.js",
+  "stylesheet": "admorph.css",
+  "enabled_on": {"templates": ["product"]},
+  "settings": [
+    {
+      "type": "select",
+      "id": "placement",
+      "label": "Place AI content",
+      "options": [
+        {"value": "after_title", "label": "Below product title"},
+        {"value": "after_cart", "label": "Below add-to-cart"},
+        {"value": "after_description", "label": "Below product description"}
+      ],
+      "default": "after_title"
+    }
+  ]
+}
+{% endschema %}
