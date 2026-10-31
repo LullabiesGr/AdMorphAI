@@ -36,5 +36,5 @@ test("Pixel events require signed shop-specific expiring token",()=>{
  assert.match(backend,/timingSafeEqual/);
  assert.match(backend,/exp:Date\.now\(\)\+24\*60\*60\*1000/);
  assert.match(backend,/parsed\.shop!==expectedShop/);
- assert.match(backend,/eventKey:String\(key\)/);
+ assert.match(backend,/eventKey:key/);
 });
