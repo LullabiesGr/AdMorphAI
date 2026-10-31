@@ -19,7 +19,15 @@ export function metaAuthorizeUrl(state:string) {
  const u=new URL("https://www.facebook.com/"+version+"/dialog/oauth");
  u.searchParams.set("client_id",appId);
  u.searchParams.set("redirect_uri",metaRedirectUri());
- u.searchParams.set("scope","ads_read");
+ // Facebook Login for Business may require a Login Configuration ID.
+ const loginConfigId=process.env.META_LOGIN_CONFIG_ID?.trim();
+ if(loginConfigId) {
+   if(!/^[0-9]+$/.test(loginConfigId)) throw new Error("Invalid META_LOGIN_CONFIG_ID");
+   u.searchParams.set("config_id",loginConfigId);
+ } else {
+   // Standard access flow for initial testing, where supported by Meta.
+   u.searchParams.set("scope","ads_read");
+ }
  u.searchParams.set("state",state);
  u.searchParams.set("response_type","code");
  return u.toString();
@@ -43,10 +51,19 @@ export async function exchangeMetaCode(code:string) {
  const short=await graph("oauth/access_token",undefined,{
     client_id:appId,client_secret:secret,redirect_uri:metaRedirectUri(),code
  });
- const long=await graph("oauth/access_token",undefined,{
-    grant_type:"fb_exchange_token",client_id:appId,client_secret:secret,fb_exchange_token:short.access_token
- });
- const data=long.access_token ? long : short;
+ // Business Login can return a system-user token that is already long-lived.
+ // Only attempt fb_exchange_token for user-token configuration.
+ let data=short;
+ try {
+   const long=await graph("oauth/access_token",undefined,{
+     grant_type:"fb_exchange_token",client_id:appId,client_secret:secret,fb_exchange_token:short.access_token
+   });
+   if(long.access_token) data=long;
+ } catch(error) {
+   if(!process.env.META_LOGIN_CONFIG_ID) throw error;
+   // Meta rejects fb_exchange_token on some business/system-user tokens.
+   // Preserve the original OAuth token; /me/adaccounts validates it next.
+ }
  if(!data.access_token) throw new Error("Meta did not return an access token");
  return {token:String(data.access_token),expiresAt:data.expires_in ? new Date(Date.now()+Number(data.expires_in)*1000):null};
 }

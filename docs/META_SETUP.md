@@ -3,6 +3,7 @@
 2. Select the Marketing API use case, often shown as **Measure ad performance data with Marketing API**. UI labeling may change. Use the Business type if asked.
 3. Name **AdMorph AI**, add your contact email, attach the correct business portfolio.
 4. Add/enable Marketing API and Facebook Login for Business/standard Facebook Login as shown by the Meta dashboard. Set **Valid OAuth Redirect URIs** to **https://YOUR_REAL_HOST/auth/meta/callback**. The redirect URL must match exactly the META OAuth integration.
+4a. Under Facebook Login for Business → Configurations, create a configuration with General variation, User access token (for the MVP), and only ads_read. Copy its numeric Configuration ID into META_LOGIN_CONFIG_ID on Render. The app supports config_id in the OAuth dialog, with scope=ads_read as a fallback where permitted.
 5. In App Settings > Basic, find **App ID** and **App Secret**. Store privately in environment variables META_APP_ID and META_APP_SECRET. Never commit them or paste App Secret in chat.
 6. Request **ads_read** with access for other businesses if the app will be offered publicly. Under App Review > Permissions and Features, submit for Advanced Access where required. Meta Business Verification and App Review are separate requirements; follow the statuses in Meta Dashboard.
 7. For App Review, explain: merchant signs in, connects their own ad account, reads owned ads and creatives to personalize copy on their Shopify product pages. Provide video showing connect, account selection, ad import and AI review.
