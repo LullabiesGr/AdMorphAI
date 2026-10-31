@@ -75,6 +75,9 @@ model Campaign {
   status String @default("DRAFT")
   content Json?
   draftContent Json?
+  image CampaignImage?
+  experiment CampaignExperiment?
+  events CampaignEvent[]
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
   owner Shop @relation(fields:[shop],references:[domain],onDelete:Cascade)
@@ -90,4 +93,34 @@ model AutomationSetting {
   lastResult Json?
   updatedAt DateTime @updatedAt
   owner Shop @relation(fields:[shop],references:[domain],onDelete:Cascade)
+}
+
+model CampaignImage {
+ campaignId String @id
+ shop String
+ draftData Bytes?
+ publishedData Bytes?
+ createdAt DateTime @default(now())
+ updatedAt DateTime @updatedAt
+ campaign Campaign @relation(fields:[campaignId],references:[id],onDelete:Cascade)
+}
+model CampaignExperiment {
+ campaignId String @id
+ shop String
+ enabled Boolean @default(false)
+ createdAt DateTime @default(now())
+ updatedAt DateTime @updatedAt
+ campaign Campaign @relation(fields:[campaignId],references:[id],onDelete:Cascade)
+}
+model CampaignEvent {
+ id String @id @default(cuid())
+ shop String
+ campaignId String
+ eventKey String @unique
+ arm String
+ kind String
+ createdAt DateTime @default(now())
+ campaign Campaign @relation(fields:[campaignId],references:[id],onDelete:Cascade)
+ @@index([campaignId,kind,arm])
+ @@index([shop,createdAt])
 }
