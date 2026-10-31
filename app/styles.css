@@ -184,3 +184,15 @@
 .am-edit-actions{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
 .am-detail-panel .ad-preview ul{padding-left:23px}
 @media(max-width:620px){.am-stats-three{grid-template-columns:1fr}.am-table-toolbar{display:grid;grid-template-columns:1fr}.am-filter-label{min-width:0}}
+
+/* Autopilot operating dashboard */
+.am-operation-list{display:flex;flex-direction:column;margin:19px 0 10px}
+.am-operation-list>div{display:grid;grid-template-columns:40px 1fr;align-items:center;column-gap:13px;
+ padding:14px 0;border-bottom:1px solid #edf0f2}
+.am-operation-list>div:last-child{border-bottom:0}
+.am-operation-list>div>span{grid-row:span 2;display:grid;place-items:center;width:34px;height:34px;
+ background:#eef3fa;color:#355e98;font-weight:750;font-size:12px;border-radius:9px}
+.am-operation-list strong{font-size:13px;color:#213249}
+.am-operation-list small{display:block;color:#697481;font-size:12px;margin-top:5px}
+.am-run-footer{display:flex;align-items:center;gap:15px;flex-wrap:wrap;margin-top:20px}
+.am-run-footer>a.ad-btn{display:inline-flex;text-decoration:none}
