@@ -195,6 +195,66 @@
         nativeIntro.appendChild(textNode("span",c.hero.eyebrow,"admorph-native-eyebrow"));
         nativeIntro.appendChild(textNode("h2",c.hero.headline,"admorph-native-headline"));
         nativeIntro.appendChild(textNode("p",c.hero.subheadline,"admorph-native-subheadline"));
+        // Prioritize authentic Shopify photos whose merchant-provided alt text
+        // matches the approved ad angle; never fabricate product photography.
+        var words=(String(c.angle||"")+" "+String(c.hero.headline||""))
+          .toLowerCase().match(/[a-z\\u00c0-\\u024f]{4,}/g)||[];
+        var ranked=photos.map(function(photo,index){
+          var label=photo.alt.toLowerCase();
+          return {photo:photo,index:index,score:words.reduce(function(score,w){
+            return score+(label.indexOf(w)!==-1?1:0);
+          },0)};
+        }).sort(function(a,b){return b.score-a.score||a.index-b.index;});
+        if(ranked.length){
+          var media=document.createElement("div");
+          media.className="admorph-native-media";
+          var active=document.createElement("img");
+          active.className="admorph-native-photo";
+          active.src=ranked[0].photo.url;
+          active.alt=ranked[0].photo.alt;
+          active.loading="lazy";
+          active.decoding="async";
+          media.appendChild(active);
+          if(ranked.length>1){
+            var chooser=document.createElement("div");
+            chooser.className="admorph-native-thumbnails";
+            chooser.setAttribute("aria-label","Real Shopify product images");
+            ranked.forEach(function(entry,i){
+              var choice=document.createElement("button");
+              choice.type="button";
+              choice.className="admorph-native-thumbnail";
+              choice.setAttribute("aria-label","View product image "+(i+1));
+              choice.setAttribute("aria-pressed",i===0?"true":"false");
+              var thumbnail=document.createElement("img");
+              thumbnail.src=entry.photo.url;
+              thumbnail.alt="";
+              thumbnail.loading="lazy";
+              choice.appendChild(thumbnail);
+              choice.addEventListener("click",function(){
+                active.src=entry.photo.url;
+                active.alt=entry.photo.alt;
+                Array.prototype.forEach.call(chooser.children,function(button){
+                  button.setAttribute("aria-pressed",button===choice?"true":"false");
+                });
+              });
+              chooser.appendChild(choice);
+            });
+            media.appendChild(chooser);
+          }
+          nativeIntro.appendChild(media);
+        }
+        // Useful approved, product-specific information without repetitive cards.
+        var details=document.createElement("details");
+        details.className="admorph-native-details";
+        var summary=document.createElement("summary");
+        summary.textContent=c.adConnection.title;
+        details.appendChild(summary);
+        details.appendChild(textNode("p",c.adConnection.text,"admorph-native-detail-copy"));
+        nativeIntro.appendChild(details);
+        // Mount the curated view beside the existing product heading, without
+        // removing or rewriting price, inventory, native gallery or purchase UI.
+        var oldIntro=nativeSection.querySelector(".admorph-native-intro");
+        if(oldIntro)oldIntro.remove();
         nativeTitle.insertAdjacentElement("beforebegin",nativeIntro);
         // The original product's gallery is authoritative and stays interactive.
         // Put the ad angle at the center of the product, not below the buy button.
