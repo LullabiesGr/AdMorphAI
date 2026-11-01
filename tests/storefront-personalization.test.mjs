@@ -13,18 +13,27 @@ function mockElement(tag){
     replaceChildren(...children){this.children=children;},
     setAttribute(name,value){this[name]=value;}};
 }
-async function runStorefront({query="",withManual=false,v2=false,visual=null}={}){
+async function runStorefront({query="",withManual=false,v2=false,visual=null,immersive=false,withPurchase=true}={}){
  const events={};
  const requestUrls=[];
  const makeRoot=(automatic)=>({
-    classList:{contains(name){return automatic&&name==="admorph-auto-slot";}},
-    getAttribute(name){return name==="data-admorph-renderer-url"?"https://cdn.shopify.com/extensions/admorph-render.js":name==="data-product-handle"?"city-line-trench":name==="data-admorph-placement"?"after_title":name==="data-product-image"?"https://cdn.shopify.com/s/files/test.jpg":name==="data-product-image-alt"?"City Line Trench":null;},
+    classList:{contains(name){return automatic&&name==="admorph-auto-slot";},add(name){this.added=name;}},
+    getAttribute(name){return name==="data-admorph-immersive"?(immersive?"true":"false"):name==="data-admorph-renderer-url"?"https://cdn.shopify.com/extensions/admorph-render.js":name==="data-product-handle"?"city-line-trench":name==="data-admorph-placement"?"after_title":name==="data-product-image"?"https://cdn.shopify.com/s/files/test.jpg":name==="data-product-image-alt"?"City Line Trench":null;},
     dataset:{},hidden:true,isConnected:true,previousElementSibling:null,
+    querySelector(selector){return selector===".admorph-shopify-gallery"&&immersive?{
+       querySelectorAll(){return [
+         {getAttribute(k){return k==="data-src"?"https://cdn.shopify.com/s/files/test.jpg":"Main view";}},
+         {getAttribute(k){return k==="data-src"?"https://cdn.shopify.com/s/files/real-back.jpg":"Back view";}}
+       ];}
+     }:null;},
     replaceChildren(...items){this.nodes=items;},
     setAttribute(name,value){this[name]=value;}
  });
  const auto=makeRoot(true),manual=withManual?makeRoot(false):null;
  const anchor={parentNode:{},insertAdjacentElement(position,element){element.movedAfterTitle=position==="afterend";}};
+ const main={contains(node){return node===section;}};
+ const section={parentNode:main,insertAdjacentElement(position,node){node.immersivePositioned=position==="beforebegin";}};
+ const purchase={closest(){return section;},scrollIntoView(){this.scrolled=true;},focus(){this.focused=true;}};
  let ctx;
  const document={
    readyState:"complete",
@@ -35,7 +44,11 @@ async function runStorefront({query="",withManual=false,v2=false,visual=null}={}
      });
      return script;
    }},
-   querySelector(selector){return selector==="main h1"?anchor:null;},
+   querySelector(selector){
+     if(selector==="main")return main;
+     if(selector==='main form[action*="/cart/add"]')return withPurchase?purchase:null;
+     return selector==="main h1"?anchor:null;
+   },
    querySelectorAll(selector){
      if(selector===".admorph-widget")return manual?[manual,auto]:[auto];
      if(selector===".admorph-widget:not(.admorph-auto-slot)")return manual?[manual]:[];
@@ -59,7 +72,7 @@ async function runStorefront({query="",withManual=false,v2=false,visual=null}={}
  ctx=vm.createContext({window,document,fetch,console,URLSearchParams});
  vm.runInContext(script,ctx);
  await new Promise(resolve=>setTimeout(resolve,15));
- return {auto,manual,requestUrls,events};
+ return {auto,manual,requestUrls,events,section,purchase};
 }
 test("theme embed registers with the correct Shopify app target",()=>{
  const schema=JSON.parse(liquid.match(/{%\s*schema\s*%}([\s\S]*?){%\s*endschema\s*%}/)[1]);
@@ -135,4 +148,44 @@ test("theme app loader and renderer are both under Shopify's 10KB suggested JS l
  assert.ok(statSync(pathA).size<10000);
  assert.ok(statSync(pathB).size<10000);
  assert.match(liquid,/data-admorph-renderer-url/);
+});
+
+test("immersive Meta experience moves ahead of native Shopify product section",async()=>{
+ const r=await runStorefront({query:"?admorph_ad=120255890044740602",v2:true,immersive:true});
+ assert.equal(r.requestUrls.length,1);
+ assert.equal(r.auto.hidden,false);
+ assert.equal(r.auto.immersivePositioned,true);
+ assert.equal(r.auto.classList.added,"admorph-immersive-mounted");
+ const visual=r.auto.nodes[0],hero=visual.children[0];
+ assert.equal(hero.children[0].children[0].src,"https://cdn.shopify.com/s/files/test.jpg");
+ const thumbnails=hero.children[0].children[1];
+ assert.equal(thumbnails.children.length,2);
+ thumbnails.children[1].onclick();
+ assert.equal(hero.children[0].children[0].src,"https://cdn.shopify.com/s/files/real-back.jpg");
+ assert.equal(thumbnails.children[1]["aria-pressed"],"true");
+ const heroCopy=hero.children[1];
+ assert.ok(heroCopy.children.some(child=>child.className==="admorph-immersive-angle"));
+ const cta=heroCopy.children.find(child=>child.className==="admorph-immersive-shop");
+ assert.equal(cta.textContent,"Explore your size");
+ cta.onclick();
+ assert.equal(r.purchase.scrolled,true);
+});
+test("without a verified native Shopify purchase section, immersive hero does not move elsewhere",async()=>{
+ const r=await runStorefront({query:"?admorph_ad=120255890044740602",v2:true,immersive:true,withPurchase:false});
+ assert.equal(r.auto.hidden,false);
+ assert.notEqual(r.auto.immersivePositioned,true);
+});
+test("merchant can turn off immersive mode and keep original app-block placement",async()=>{
+ const r=await runStorefront({query:"?admorph_ad=120255890044740602",v2:true,immersive:false});
+ assert.equal(r.auto.hidden,false);
+ assert.notEqual(r.auto.immersivePositioned,true);
+});
+test("both Shopify block formats offer immersive display control",()=>{
+ const manual=readFileSync(new URL("../extensions/admorph-theme/blocks/admorph-product.liquid",import.meta.url),"utf8");
+ assert.match(liquid,/data-admorph-immersive/);
+ assert.match(manual,/data-admorph-immersive/);
+ for(const source of [manual,liquid]){
+  assert.match(source,/admorph-shopify-gallery/);
+  assert.match(source,/"id": "immersive"/);
+ }
 });
