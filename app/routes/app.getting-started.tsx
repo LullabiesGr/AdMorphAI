@@ -29,8 +29,8 @@ export default function GettingStarted(){
         <SectionHead title="How AdMorph works"/>
         <div className="am-explain-steps">
           <div><b>01</b><strong>Import your ads</strong><p>AdMorph reads permitted Meta creatives and identifies ads that link directly to your products.</p></div>
-          <div><b>02</b><strong>Generate relevant copy</strong><p>OpenAI suggests headlines and benefits based on verified Shopify product information.</p></div>
-          <div><b>03</b><strong>Publish safely</strong><p>Review drafts, save the theme block, and let eligible visitors see the relevant variation.</p></div>
+          <div><b>02</b><strong>Build an ad-matched product showcase</strong><p>AI creates campaign-specific messaging and visual direction using real Shopify product photos. The immersive hero can appear above the normal product section.</p></div>
+          <div><b>03</b><strong>Review and activate Immersive Hero</strong><p>Approve your AI page, enable the immersive setting in the Theme Editor and Save. Native price, variants, cart and checkout remain intact.</p></div>
         </div>
       </s-section>
     </div>

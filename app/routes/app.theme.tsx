@@ -111,21 +111,21 @@ export default function Theme(){
      <div className="am-main-column">
        <s-section>
         <SectionHead title="Recommended: automatic placement" action={<State text="Works with custom themes" kind="info"/>}/>
-        <p className="ad-muted">Use the AdMorph Auto Placement app embed for themes such as MELD. It adds personalized copy to the product information automatically when visitors arrive from a matching Meta ad. No manual theme section placement is needed.</p>
+        <p className="ad-muted">Use the AdMorph Auto Placement app embed for themes such as MELD. With Immersive Hero enabled, it places a large ad-matched product showcase above the existing Shopify product section. Native prices, images, variants and checkout remain unchanged. No manual theme code edits are required.</p>
         <div className="am-guide-row"><span>01</span><div><strong>Enable the AdMorph Auto Placement app embed</strong><p>Open the published theme's App embeds panel. Enable AdMorph Auto Placement.</p></div></div>
-        <div className="am-guide-row"><span>02</span><div><strong>Choose where the AI copy appears</strong><p>Below product title, below Add to Cart, or below product description. Default is below product title.</p></div></div>
+        <div className="am-guide-row"><span>02</span><div><strong>Turn on Immersive Hero</strong><p>Enable the new "Show immersive ad-matched hero before product" checkbox. It uses the real Shopify product photography and campaign-specific visual styling. Uncheck it to return to a smaller inline block.</p></div></div>
         <div className="am-guide-row"><span>03</span><div><strong>Press Save in Shopify</strong><p>Then open the test product URL with <code>admorph_ad</code>. Without a matching ad ID, the normal product page stays unchanged.</p></div></div>
         {check.embedStatus==="active"?<State text="Auto Placement active" kind="success"/>:
          check.embedStatus==="available"?
           <a className="ad-btn am-standalone-action" href={d.autoEmbedEditorUrl} target="_top">Enable AdMorph Auto Placement</a>:
          <a className="ad-btn ghost am-standalone-action" href={d.embedPanelUrl} target="_top">Open Shopify App Embeds panel</a>}
         {check.embedStatus==="missing"&&<p className="ad-muted">The Shopify app version has not registered Auto Placement. Deploy the extension before attempting activation; otherwise Shopify displays “App embed does not exist.”</p>}
-        <p className="ad-muted">If you already use the manual AdMorph block, the automatic integration detects it and avoids showing duplicate content.</p>
+        <p className="ad-muted">If you already use the manual AdMorph block, the automatic integration detects it and avoids duplicate content. The new Immersive Hero feature works for both the manual block and automatic embed.</p>
        </s-section>
        <s-section>
         <SectionHead title="Alternative: position a manual app block"/>
         <div className="am-guide-row"><span>01</span><div><strong>Open the Shopify Theme Editor</strong><p>Use the button below. AdMorph will open the product template and request to add its app block.</p></div></div>
-        <div className="am-guide-row"><span>02</span><div><strong>Place the personalization block</strong><p>Position AdMorph near the product description, benefits or Add to Cart area.</p></div></div>
+        <div className="am-guide-row"><span>02</span><div><strong>Choose Immersive Hero or inline placement</strong><p>Enable the Immersive Hero checkbox for the large product showcase above the original product section. Disable it to keep AdMorph in the exact section position you choose.</p></div></div>
         <div className="am-guide-row"><span>03</span><div><strong>Save the theme</strong><p>Press Save in Shopify. Return to AdMorph and confirm the setup below.</p></div></div>
         <a className="ad-btn am-standalone-action" href={d.editorUrl} target="_top">Add AdMorph block to product page</a>
         <p className="ad-muted">This opens a dedicated Apps section in the published theme, which works even when a custom product section does not support app blocks. Press <strong>Save</strong> in Shopify.</p>
