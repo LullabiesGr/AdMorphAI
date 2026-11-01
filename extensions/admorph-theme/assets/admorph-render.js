@@ -5,7 +5,8 @@
     var textNode=helpers.textNode, findFirst=helpers.findFirst, publishPixelEvent=helpers.publishPixelEvent;
     var immersive=root.getAttribute("data-admorph-immersive")==="true";
     var gallery=root.querySelector && root.querySelector(".admorph-shopify-gallery");
-    var photos=gallery ? Array.prototype.slice.call(gallery.querySelectorAll("[data-src]")).map(function(node){
+    var photoSource=gallery && gallery.content ? gallery.content : gallery;
+    var photos=photoSource ? Array.prototype.slice.call(photoSource.querySelectorAll("[data-src]")).map(function(node){
       return {url:node.getAttribute("data-src"),alt:node.getAttribute("data-alt") || "Shopify product"};
     }).filter(function(item){return /^https:\/\//.test(item.url);}).slice(0,4):[];
     var frame = document.createElement("div");
