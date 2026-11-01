@@ -24,14 +24,14 @@ export const loader=async({request}:LoaderFunctionArgs)=>{
   prisma.metaAd.findMany({where:{shop:session.shop},orderBy:{updatedAt:"desc"},take:200}),
   prisma.campaign.findMany({where:{shop:session.shop},orderBy:{updatedAt:"desc"},take:200}),
   prisma.campaignExperiment.findMany({where:{shop:session.shop},select:{campaignId:true,enabled:true}}),
-  prisma.campaignImage.findMany({where:{shop:session.shop},select:{campaignId:true}})
+  prisma.campaignImage.findMany({where:{shop:session.shop},select:{campaignId:true,draftData:true,publishedData:true}})
  ]);
  console.info("[AdMorph campaigns] loader complete",{ads:ads.length,campaigns:campaigns.length});
  const experimentResults=await experimentReport(session.shop,campaigns.map(c=>c.id));
  return {
    shop:session.shop,
    ads:ads.map(ad=>({id:ad.adId,name:ad.name,status:ad.status,creative:metaCreativeCopy(ad.creative)})),
-   campaigns,experiments,images,experimentResults
+   campaigns,experiments,images:images.map(x=>({campaignId:x.campaignId,hasDraft:Boolean(x.draftData),hasPublished:Boolean(x.publishedData)})),experimentResults
  };
 };
 
@@ -335,6 +335,8 @@ export default function Campaigns(){
    "productVisual" in productPreview.data?productPreview.data.productVisual?.url:undefined;
  const artworkData=artwork.data&&"campaignId" in artwork.data&&artwork.data.campaignId===selectedId?artwork.data:null;
  const report=selected?d.experimentResults[selected.id]:undefined;
+ const selectedImageStatus=d.images.find(x=>x.campaignId===selectedId);
+ const photoshootReady=Boolean(selectedImageStatus?.hasDraft||selectedImageStatus?.hasPublished);
  const experimentOn=Boolean(selected&&d.experiments.find(e=>e.campaignId===selected.id)?.enabled);
  function openCampaign(id:string){
    if(selectedId===id){setSelectedId(null);return;}
@@ -441,7 +443,7 @@ export default function Campaigns(){
          {selectedAI.success&&<Form method="post">
            <input type="hidden" name="intent" value="publish_full_experience"/>
            <input type="hidden" name="id" value={selected.id}/>
-           <button className="ad-btn" type="submit" disabled={navigation.state!=="idle" || !(artworkData&&"draftImage" in artworkData&&artworkData.draftImage || artworkData&&"publishedImage" in artworkData&&artworkData.publishedImage)}>
+           <button className="ad-btn" type="submit" disabled={navigation.state!=="idle" || !photoshootReady}>
              {runningIntent==="publish_full_experience"?"Publishing…":"Publish full AdMorph experience"}
            </button>
           </Form>}
