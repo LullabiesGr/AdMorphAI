@@ -11,11 +11,12 @@ export async function generateCampaignBackdrop(input:{
  if(!key)throw new Error("OPENAI_API_KEY is not configured");
  const ad=metaCreativeCopy(input.adCreative);
  const prompt=[
-  "Create an original, sophisticated ABSTRACT ecommerce background texture.",
-  "No products of any kind, no garments, no people, no skin, no objects, no logos, no words, no text, no symbols, no brands.",
-  "This is background artwork only. The ACTUAL Shopify product photograph will be displayed separately and must remain unedited.",
-  "Wide horizontal composition with gentle visual motion, nuanced light, sophisticated texture, generous negative space.",
-  "Premium art direction, subtle, realistic materials or graphic shapes, no distracting details.",
+  "Create a premium, photorealistic, full-bleed editorial LIFESTYLE ENVIRONMENT for an ecommerce product hero.",
+  "Depict a believable environment inspired by the advertisement and its use occasion; architectural spaces, natural landscapes or contextual props are allowed.",
+  "DO NOT create, replicate, alter, illustrate or imply any specific merchandise. No identifiable merchandise, no brand logos, no words, no claims, no prices.",
+  "The exact verified Shopify product photo will be composited as a separate foreground layer by the storefront. Leave generous clean central negative space for that image. Do not invent product details.",
+  "Cinematic wide composition, convincing depth, coherent lighting, compelling scene, clear product-safe negative space, not an abstract texture.",
+  "Premium campaign art direction and an unmistakable lifestyle atmosphere. Avoid confusing decorative objects with the offered product.",
   "Palette:",input.palette,"Mood:",input.mood,
   "Creative angle:",input.angle,
   "Product category context (only to select aesthetic):",input.product.title.slice(0,120),
