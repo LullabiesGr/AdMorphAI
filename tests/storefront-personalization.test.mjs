@@ -21,10 +21,10 @@ async function runStorefront({query="",withManual=false,v2=false,visual=null,imm
     getAttribute(name){return name==="data-admorph-immersive"?(immersive?"true":"false"):name==="data-admorph-renderer-url"?"https://cdn.shopify.com/extensions/admorph-render.js":name==="data-product-handle"?"city-line-trench":name==="data-admorph-placement"?"after_title":name==="data-product-image"?"https://cdn.shopify.com/s/files/test.jpg":name==="data-product-image-alt"?"City Line Trench":null;},
     dataset:{},hidden:true,isConnected:true,previousElementSibling:null,
     querySelector(selector){return selector===".admorph-shopify-gallery"&&immersive?{
-       querySelectorAll(){return [
+       content:{querySelectorAll(){return [
          {getAttribute(k){return k==="data-src"?"https://cdn.shopify.com/s/files/test.jpg":"Main view";}},
          {getAttribute(k){return k==="data-src"?"https://cdn.shopify.com/s/files/real-back.jpg":"Back view";}}
-       ];}
+       ];}}
      }:null;},
     replaceChildren(...items){this.nodes=items;},
     setAttribute(name,value){this[name]=value;}
@@ -188,4 +188,13 @@ test("both Shopify block formats offer immersive display control",()=>{
   assert.match(source,/admorph-shopify-gallery/);
   assert.match(source,/"id": "immersive"/);
  }
+});
+
+test("manual Shopify app block is preferred and can render an immersive hero",async()=>{
+ const r=await runStorefront({query:"?admorph_ad=120255890044740602",v2:true,immersive:true,withManual:true});
+ assert.equal(r.requestUrls.length,1);
+ assert.equal(r.auto.hidden,true);
+ assert.equal(r.manual.hidden,false);
+ assert.equal(r.manual.immersivePositioned,true);
+ assert.equal(r.manual.nodes[0].children[0].children[0].children[1].children.length,2);
 });
