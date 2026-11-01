@@ -402,3 +402,34 @@
 @media(prefers-reduced-motion:reduce){
  .admorph-widget .admorph-immersive-gallery *, .admorph-widget .admorph-experience-image>img{transition:none}
 }
+
+/* Preserve each merchant art direction in the immersive product hero. */
+.admorph-widget.admorph-immersive-mounted .admorph-experience-image{max-height:none}
+.admorph-widget.admorph-immersive-mounted .admorph-experience-copy{
+ margin:0;max-width:none;border-radius:0;box-shadow:none
+}
+.admorph-widget.admorph-immersive-mounted .admorph-visual-spotlight .admorph-experience-hero{
+ grid-template-columns:minmax(0,.85fr) minmax(0,1.15fr)
+}
+.admorph-widget.admorph-immersive-mounted .admorph-visual-spotlight .admorph-experience-copy{
+ background:var(--av-light,#f8f7f3)
+}
+.admorph-widget.admorph-immersive-mounted .admorph-visual-gallery .admorph-experience-hero{
+ grid-template-columns:minmax(0,1.15fr) minmax(0,.85fr)
+}
+.admorph-widget.admorph-immersive-mounted .admorph-visual-gallery .admorph-experience-image{
+ order:1;width:auto
+}
+.admorph-widget.admorph-immersive-mounted .admorph-visual-gallery .admorph-experience-copy{
+ order:2;padding:clamp(32px,4.6vw,70px)
+}
+@media(max-width:850px){
+ .admorph-widget.admorph-immersive-mounted .admorph-visual-spotlight .admorph-experience-hero,
+ .admorph-widget.admorph-immersive-mounted .admorph-visual-gallery .admorph-experience-hero{
+   grid-template-columns:1fr
+ }
+ .admorph-widget.admorph-immersive-mounted .admorph-visual-gallery .admorph-experience-image,
+ .admorph-widget.admorph-immersive-mounted .admorph-visual-spotlight .admorph-experience-image{order:1}
+ .admorph-widget.admorph-immersive-mounted .admorph-visual-gallery .admorph-experience-copy,
+ .admorph-widget.admorph-immersive-mounted .admorph-visual-spotlight .admorph-experience-copy{order:2}
+}
