@@ -433,3 +433,16 @@
  .admorph-widget.admorph-immersive-mounted .admorph-visual-gallery .admorph-experience-copy,
  .admorph-widget.admorph-immersive-mounted .admorph-visual-spotlight .admorph-experience-copy{order:2}
 }
+
+/* Native ad-matched product: the original Shopify gallery and buying controls remain intact. */
+.admorph-native-intro { margin: 0 0 1.35rem; padding: 0 0 1.1rem; border-bottom: 1px solid rgba(110,110,110,.2); color: inherit; }
+.admorph-native-angle { display: inline-block; padding: .3rem .65rem; margin: 0 0 .75rem; border: 1px solid currentColor; border-radius: 99px; font-size: .7rem; letter-spacing: .09em; text-transform: uppercase; }
+.admorph-native-eyebrow { display: block; font-size: .75rem; font-weight: 600; letter-spacing: .12em; text-transform: uppercase; opacity:.72; }
+.admorph-native-headline { font-size: clamp(1.65rem, 2.6vw, 3rem); line-height: 1.12; letter-spacing: -.035em; margin: .55rem 0; font-weight: 700; }
+.admorph-native-subheadline { font-size: 1rem; line-height: 1.6; margin: 0; max-width: 52ch; opacity:.84; }
+.admorph-native-intro.admorph-palette-midnight { border-color: #59677e; }
+.admorph-native-intro.admorph-palette-rose { border-color: #d9a7ae; }
+.admorph-native-intro.admorph-palette-sage { border-color: #9bad91; }
+.admorph-native-intro.admorph-palette-sand { border-color: #c9af83; }
+.admorph-native-intro.admorph-palette-slate { border-color: #8595a7; }
+@media (max-width:749px) { .admorph-native-intro { margin-bottom: 1rem; } .admorph-native-headline { font-size: clamp(1.5rem, 7vw, 2.2rem); } }
