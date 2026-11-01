@@ -24,14 +24,14 @@ export const loader=async({request}:LoaderFunctionArgs)=>{
   prisma.metaAd.findMany({where:{shop:session.shop},orderBy:{updatedAt:"desc"},take:200}),
   prisma.campaign.findMany({where:{shop:session.shop},orderBy:{updatedAt:"desc"},take:200}),
   prisma.campaignExperiment.findMany({where:{shop:session.shop},select:{campaignId:true,enabled:true}}),
-  prisma.campaignImage.findMany({where:{shop:session.shop},select:{campaignId:true}})
+  prisma.campaignImage.findMany({where:{shop:session.shop},select:{campaignId:true,draftData:true,publishedData:true}})
  ]);
  console.info("[AdMorph campaigns] loader complete",{ads:ads.length,campaigns:campaigns.length});
  const experimentResults=await experimentReport(session.shop,campaigns.map(c=>c.id));
  return {
    shop:session.shop,
    ads:ads.map(ad=>({id:ad.adId,name:ad.name,status:ad.status,creative:metaCreativeCopy(ad.creative)})),
-   campaigns,experiments,images,experimentResults
+   campaigns,experiments,images:images.map(x=>({campaignId:x.campaignId,hasDraft:Boolean(x.draftData),hasPublished:Boolean(x.publishedData)})),experimentResults
  };
 };
 
@@ -40,6 +40,26 @@ export const action=async({request}:ActionFunctionArgs)=>{
  const data=await request.formData(),intent=String(data.get("intent")||"");
  const shop=session.shop;
  try {
+  if(intent==="publish_full_experience"){
+    const id=String(data.get("id")||"");
+    const campaign=await prisma.campaign.findFirst({where:{id,shop},include:{image:true}});
+    if(!campaign)throw new Error("Campaign not found.");
+    const validated=campaignContentSchema.safeParse(campaign.draftContent??campaign.content);
+    if(!validated.success)throw new Error("Generate and review the AI experience before publishing.");
+    if(!campaign.image?.draftData&&!campaign.image?.publishedData)
+      throw new Error("Generate an AI Product Photoshoot before publishing.");
+    await prisma.$transaction(async tx=>{
+      await tx.campaign.update({where:{id},data:{
+        content:validated.data,status:"PUBLISHED",draftContent:Prisma.DbNull
+      }});
+      if(campaign.image?.draftData){
+        await tx.campaignImage.update({where:{campaignId:id},data:{
+          publishedData:campaign.image.draftData,draftData:null
+        }});
+      }
+    });
+    return {ok:true,message:"Published: AI product photoshoot and campaign experience are now live together.",campaignId:id};
+  }
   if(intent==="preview_product"){
     const id=String(data.get("id")||"");
     const campaign=await prisma.campaign.findFirst({where:{id,shop},select:{id:true,productId:true}});
@@ -315,6 +335,8 @@ export default function Campaigns(){
    "productVisual" in productPreview.data?productPreview.data.productVisual?.url:undefined;
  const artworkData=artwork.data&&"campaignId" in artwork.data&&artwork.data.campaignId===selectedId?artwork.data:null;
  const report=selected?d.experimentResults[selected.id]:undefined;
+ const selectedImageStatus=d.images.find(x=>x.campaignId===selectedId);
+ const photoshootReady=Boolean(selectedImageStatus?.hasDraft||selectedImageStatus?.hasPublished);
  const experimentOn=Boolean(selected&&d.experiments.find(e=>e.campaignId===selected.id)?.enabled);
  function openCampaign(id:string){
    if(selectedId===id){setSelectedId(null);return;}
@@ -418,9 +440,12 @@ export default function Campaigns(){
              {selectedAI.success?"Regenerate AI page":"Generate AI page"}
            </button>
          </Form>
-         {selectedAI.success&&(selected.status!=="PUBLISHED"||Boolean(selected.draftContent))&&
-          <Form method="post"><input type="hidden" name="intent" value="publish"/><input type="hidden" name="id" value={selected.id}/>
-           <button className="ad-btn" type="submit">Approve & publish</button>
+         {selectedAI.success&&<Form method="post">
+           <input type="hidden" name="intent" value="publish_full_experience"/>
+           <input type="hidden" name="id" value={selected.id}/>
+           <button className="ad-btn" type="submit" disabled={navigation.state!=="idle" || !photoshootReady}>
+             {runningIntent==="publish_full_experience"?"Publishing…":"Publish full AdMorph experience"}
+           </button>
           </Form>}
          {selected.status==="PUBLISHED"&&<a href={publicLink} target="_blank" rel="noopener noreferrer" className="ad-btn ghost">
           View live Shopify page
