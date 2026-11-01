@@ -381,3 +381,41 @@
  .am-simple-results{grid-template-columns:1fr}
  .am-simple-accordion-body,.am-simple-advanced-body{padding:14px}
 }
+
+/* Studio preview reflects the new full-width, first-screen product hero. */
+.am-experience-preview.am-preview-immersive .am-experience-hero-row{
+ display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);
+ min-height:310px;background:var(--preview-bg,#f5f2ec)
+}
+.am-experience-preview.am-preview-immersive .am-experience-banner{
+ order:1;display:flex;flex-direction:column;align-items:flex-start;
+ justify-content:center;min-width:0;padding:clamp(18px,3vw,35px);
+ background:var(--preview-bg,#f5f2ec)
+}
+.am-experience-preview.am-preview-immersive .am-experience-banner h2{
+ font-family:inherit;font-size:clamp(27px,3.3vw,46px);
+ line-height:1.08;font-weight:700;letter-spacing:-.055em;margin:12px 0
+}
+.am-experience-preview.am-preview-immersive .am-experience-banner p{
+ font-size:13px;line-height:1.65;max-width:36ch
+}
+.am-experience-preview.am-preview-immersive .am-experience-product-image{
+ order:2;min-height:310px;background:var(--preview-light,#f9f8f4)
+}
+.am-experience-preview.am-preview-immersive .am-experience-product-image img{
+ display:block;width:100%;height:100%;max-height:400px;min-height:310px;object-fit:cover
+}
+.am-experience-preview.am-preview-immersive.am-preview-fit-contain .am-experience-product-image img{
+ object-fit:contain
+}
+.am-experience-hero-overline{
+ font-size:10px;letter-spacing:.16em;font-weight:800;opacity:.6;margin-bottom:12px
+}
+@media(max-width:650px){
+ .am-experience-preview.am-preview-immersive .am-experience-hero-row{
+   grid-template-columns:1fr
+ }
+ .am-experience-preview.am-preview-immersive .am-experience-product-image{order:1;min-height:0}
+ .am-experience-preview.am-preview-immersive .am-experience-product-image img{min-height:220px;max-height:290px}
+ .am-experience-preview.am-preview-immersive .am-experience-banner{order:2;padding:22px}
+}

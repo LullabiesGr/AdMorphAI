@@ -3,11 +3,12 @@ import {resolveVisualDirection,type Experience} from "../lib/experience";
 
 export function ExperiencePreview({content:c,productImageUrl,productImageAlt}:{content:Experience;productImageUrl?:string;productImageAlt?:string}){
  const visual=resolveVisualDirection(c);
- return <div className={"am-experience-preview am-experience-"+c.layout+
+ return <div className={"am-experience-preview am-preview-immersive am-experience-"+c.layout+
     " am-preview-visual-"+visual.composition+" am-preview-palette-"+visual.palette+
     " am-preview-fit-"+visual.imageFit}>
    <div className="am-experience-hero-row">
    <div className="am-experience-banner">
+     <span className="am-experience-hero-overline">AD-MATCHED PRODUCT HERO</span>
      <span className="am-experience-eyebrow">{c.hero.eyebrow}</span>
      <h2>{c.hero.headline}</h2>
      <p>{c.hero.subheadline}</p>
@@ -35,7 +36,7 @@ export function ExperiencePreview({content:c,productImageUrl,productImageAlt}:{c
    <div className="am-experience-preview-note">
     <strong>AI art direction: {visual.mood}</strong>
     <p>{visual.rationale}</p>
-    <small>Layout: {visual.composition} · Palette: {visual.palette} · Image: {visual.imageFit}. Only the original Shopify product photo is used. Changes require approval.</small>
+    <small>The approved experience appears before the native Shopify product section when Immersive Hero is enabled in the Theme Editor. Layout: {visual.composition} · Palette: {visual.palette} · Image: {visual.imageFit}. Shopify pricing, variants and checkout stay unchanged.</small>
    </div>
  </div>;
 }
