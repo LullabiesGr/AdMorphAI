@@ -1,7 +1,7 @@
 import {Prisma} from "@prisma/client";
 import {useMemo,useState} from "react";
 import type {ActionFunctionArgs,LoaderFunctionArgs} from "react-router";
-import {Form,Link,useActionData,useFetcher,useLoaderData} from "react-router";
+import {Form,Link,useActionData,useFetcher,useLoaderData,useNavigation} from "react-router";
 import prisma from "../db.server";
 import {authenticate} from "../shopify.server";
 import {listProducts,getProduct} from "../services/products.server";
@@ -65,7 +65,7 @@ export const action=async({request}:ActionFunctionArgs)=>{
       where:{campaignId:id},create:{campaignId:id,shop,draftData:new Uint8Array(bytes)},
       update:{draftData:new Uint8Array(bytes)}
     });
-    return {ok:true,message:"AI background generated as a draft. Review the image before approving it.",campaignId:id};
+    return {ok:true,message:"AI lifestyle scene generated as a draft. Preview the composition and approve it before publishing.",campaignId:id};
   }
   if(intent==="preview_backdrop"){
     const id=String(data.get("id")||"");
@@ -87,7 +87,7 @@ export const action=async({request}:ActionFunctionArgs)=>{
       await prisma.campaignImage.update({where:{campaignId:id},data:{
         publishedData:image.draftData,draftData:null
       }});
-      return {ok:true,message:"AI background approved and published. The original product photograph stays unchanged."};
+      return {ok:true,message:"AI lifestyle scene published. The real Shopify product image remains the foreground product."};
     }
     await prisma.campaignImage.updateMany({where:{campaignId:id,shop},data:
       intent==="discard_backdrop"?{draftData:null}:{publishedData:null}});
@@ -284,6 +284,9 @@ export const action=async({request}:ActionFunctionArgs)=>{
 type CampaignTab="all"|"live"|"review";
 export default function Campaigns(){
  const d=useLoaderData<typeof loader>();
+ const navigation=useNavigation();
+ const runningIntent=navigation.state!=="idle"?navigation.formData?.get("intent"):null;
+ const generatingVisual=runningIntent==="generate_backdrop";
  const feedback=useActionData<typeof action>();
  const catalog=useFetcher<typeof action>();
  const productPreview=useFetcher<typeof action>();
@@ -331,8 +334,14 @@ export default function Campaigns(){
    <s-button slot="primary-action" href="/app/autopilot" variant="primary">Import Meta ads</s-button>
    <div className="am-container am-simple-workspace">
      <PageIntro eyebrow="ADMORPH CONTENT STUDIO" title="Your AI product pages"
-       description="Choose a Meta ad, see the page AI prepared, and publish it when you are happy with it."/>
+       description="Build a visual campaign experience that matches each Meta ad. Approve the content and AI lifestyle scene before publishing."/>
      {feedback&&<s-banner tone={feedback.ok?"success":"critical"}>{feedback.message}</s-banner>}
+     {navigation.state!=="idle"&&<div role="status" aria-live="polite" className="am-ai-generating">
+       <span className="am-ai-spinner" aria-hidden="true"/>
+       <div><strong>{generatingVisual?"Creating your cinematic AI scene…":runningIntent==="generate"?"Creating your ad-matched product experience…":"Applying your campaign changes…"}</strong>
+       <p>{generatingVisual?"Generating a photographic environment matched to the ad. The original Shopify product remains untouched.": "The storefront remains unchanged until you approve and publish."}</p></div>
+     </div>}
+
      <div className="am-simple-steps" aria-label="How AdMorph works">
        <div><span>1</span><strong>Connect an ad</strong><small>Find its Shopify product</small></div>
        <div><span>2</span><strong>AI builds the page</strong><small>Preview the result</small></div>
@@ -410,7 +419,7 @@ export default function Campaigns(){
        {selectedAI.success&&isExperience(selectedAI.data)&&<>
          <p className="am-simple-preview-label">PREVIEW — WHAT THE VISITOR WILL SEE</p>
          <ExperiencePreview content={selectedAI.data} productImageUrl={linkedImage} productImageAlt={selected.productTitle}/>
-         <p className="am-simple-caption">The preview uses the real Shopify product image. AI artwork, if approved, is an additional decorative background.</p>
+         <p className="am-simple-caption">The hero combines your approved AI environment with the genuine Shopify product photo. The actual theme layout is shown on your live preview URL after publishing.</p>
        </>}
        {selectedAI.success&&!isExperience(selectedAI.data)&&<div className="ad-preview">
           <h3>{selectedAI.data.headline}</h3><p>{selectedAI.data.subheadline}</p>
@@ -442,24 +451,24 @@ export default function Campaigns(){
         </div>
        </details>}
        {selectedAI.success&&isExperience(selectedAI.data)&&<details className="am-simple-accordion">
-        <summary>AI visuals and background images (optional)</summary>
+        <summary>AI Visual Studio — cinematic campaign scenes</summary>
         <div className="am-simple-accordion-body">
-         <p className="ad-muted">The default page already uses Shopify product photography. You can ask AI to suggest new colors or generate an optional decorative background; neither goes live without your approval.</p>
+         <p className="ad-muted">Generate a distinct photographic lifestyle environment for this Meta ad. AdMorph places the genuine Shopify product photo above the scene. Your customer always sees the original product; no AI-generated product claims.</p>
          <div className="am-simple-primary-actions">
           <Form method="post"><input type="hidden" name="intent" value="generate_visual"/><input type="hidden" name="id" value={selected.id}/>
            <button type="submit" className="ad-btn ghost">AI suggest a new design</button></Form>
           <Form method="post"><input type="hidden" name="intent" value="generate_backdrop"/><input type="hidden" name="id" value={selected.id}/>
-           <button type="submit" className="ad-btn ghost">Generate decorative AI image</button></Form>
+           <button type="submit" className="ad-btn ghost" disabled={navigation.state!=="idle"}>{generatingVisual?"Generating scene…":"Generate WOW visual scene"}</button></Form>
           <artwork.Form method="post"><input type="hidden" name="intent" value="preview_backdrop"/><input type="hidden" name="id" value={selected.id}/>
            <button type="submit" className="ad-btn ghost" disabled={artwork.state!=="idle"}>Refresh image preview</button></artwork.Form>
          </div>
          {artworkData&&"draftImage" in artworkData&&artworkData.draftImage&&<div className="am-simple-art">
-            <img src={artworkData.draftImage} alt="AI-generated decorative background waiting for approval"/>
+            <div className="am-ai-scene-preview"><img className="am-ai-scene-bg" src={artworkData.draftImage} alt="Draft AI lifestyle environment"/>{linkedImage&&<img className="am-ai-scene-product" src={linkedImage} alt={selected.productTitle}/>}<span>AI environment + real Shopify product</span></div>
             <strong>Draft image — not published</strong>
            </div>}
          {artworkData&&"publishedImage" in artworkData&&artworkData.publishedImage&&<div className="am-simple-art">
-            <img src={artworkData.publishedImage} alt="Current published decorative background"/>
-            <strong>Published background image</strong>
+            <div className="am-ai-scene-preview"><img className="am-ai-scene-bg" src={artworkData.publishedImage} alt="Published AI lifestyle environment"/>{linkedImage&&<img className="am-ai-scene-product" src={linkedImage} alt={selected.productTitle}/>}<span>Live campaign composition</span></div>
+            <strong>Published campaign environment</strong>
            </div>}
          <div className="am-simple-primary-actions">
           <Form method="post"><input type="hidden" name="intent" value="approve_backdrop"/><input type="hidden" name="id" value={selected.id}/>

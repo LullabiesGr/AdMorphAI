@@ -245,6 +245,30 @@
           }
           nativeIntro.appendChild(media);
         }
+        // Compose the approved ad-specific AI lifestyle environment with only
+        // authentic Shopify merchandise photography in the foreground.
+        if(hasImage && ranked.length){
+          var cinematic=document.createElement("div");
+          cinematic.className="admorph-cinematic-scene admorph-cinematic-"+composition;
+          var environment=document.createElement("img");
+          environment.className="admorph-cinematic-environment";
+          environment.src="/apps/admorph?image=1&ad_id="+encodeURIComponent(adId)+
+            "&product_handle="+encodeURIComponent(root.getAttribute("data-product-handle"));
+          environment.alt="";
+          environment.setAttribute("aria-hidden","true");
+          environment.loading="lazy";
+          var genuine=document.createElement("img");
+          genuine.className="admorph-cinematic-product";
+          genuine.src=ranked[0].photo.url;
+          genuine.alt=ranked[0].photo.alt;
+          genuine.loading="lazy";
+          cinematic.appendChild(environment);
+          cinematic.appendChild(genuine);
+          var caption=textNode("span","AI environment · Real Shopify product","admorph-cinematic-disclosure");
+          cinematic.appendChild(caption);
+          environment.addEventListener("error",function(){cinematic.hidden=true;});
+          nativeIntro.insertBefore(cinematic,media);
+        }
         // Useful approved, product-specific information without repetitive cards.
         var details=document.createElement("details");
         details.className="admorph-native-details";
