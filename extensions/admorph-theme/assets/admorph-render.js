@@ -195,8 +195,8 @@
         var nativeIntro=document.createElement("div");
         nativeIntro.className="admorph-native-intro admorph-palette-"+palette;
         nativeIntro.appendChild(textNode("span",c.hero.eyebrow,"admorph-native-eyebrow"));
-        nativeIntro.appendChild(textNode("h2",c.hero.headline,"admorph-native-headline"));
-        nativeIntro.appendChild(textNode("p",c.hero.subheadline,"admorph-native-subheadline"));
+        // Native product H1 stays the sole product heading; ad copy becomes a small kicker.
+        if(!hasImage)nativeIntro.appendChild(textNode("p",c.hero.subheadline,"admorph-native-subheadline"));
         // Prioritize authentic Shopify photos whose merchant-provided alt text
         // matches the approved ad angle; never fabricate product photography.
         var words=(String(c.angle||"")+" "+String(c.hero.headline||""))
@@ -243,7 +243,7 @@
             });
             media.appendChild(chooser);
           }
-          nativeIntro.appendChild(media);
+          if(!hasImage)nativeIntro.appendChild(media);
         }
         // Replace the additional editorial image with the approved image-to-image
         // campaign hero. Preserve Shopify's authentic, interactive native gallery.
@@ -261,8 +261,18 @@
           var disclosure=textNode("figcaption","AI-generated campaign visualization · Original product photos below","admorph-cinematic-disclosure");
           cinematic.appendChild(photoshoot);
           cinematic.appendChild(disclosure);
-          nativeIntro.insertBefore(cinematic,media);
-          media.classList.add("admorph-authentic-gallery");
+          // A real campaign visual belongs above the product grid, not as
+          // another small photo squeezed into the text/purchase column.
+          if(nativeSection.parentNode && typeof nativeSection.parentNode.insertBefore==="function"){
+            var previousHero=document.querySelector(".admorph-fullbleed-photoshoot");
+            if(previousHero)previousHero.remove();
+            cinematic.classList.add("admorph-fullbleed-photoshoot");
+            nativeSection.parentNode.insertBefore(cinematic,nativeSection);
+          }else{
+            nativeIntro.insertBefore(cinematic,media);
+          }
+          // Shopify's own gallery is preserved. Do not duplicate it below copy.
+          media.hidden=true;
         }
         // Useful approved, product-specific information without repetitive cards.
         var details=document.createElement("details");

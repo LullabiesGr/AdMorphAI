@@ -428,7 +428,14 @@ export default function Campaigns(){
        </div>
        {selectedAI.success&&isExperience(selectedAI.data)&&<>
          <p className="am-simple-preview-label">PREVIEW — WHAT THE VISITOR WILL SEE</p>
-         <ExperiencePreview content={selectedAI.data} productImageUrl={linkedImage} productImageAlt={selected.productTitle}/>
+         {artworkData&&"draftImage" in artworkData&&artworkData.draftImage?
+          <div className="am-main-visual-preview"><img src={artworkData.draftImage} alt="Generated AI photoshoot draft"/><strong>AI Photoshoot · Draft — not visible to customers</strong></div>:
+          artworkData&&"publishedImage" in artworkData&&artworkData.publishedImage?
+          <div className="am-main-visual-preview"><img src={artworkData.publishedImage} alt="Approved AI campaign photoshoot"/><strong>Published AI Photoshoot</strong></div>:
+          <div className="am-main-visual-empty"><strong>No AI product photoshoot published</strong><p>The plain product image below is NOT the personalized visual. Generate the photoshoot above and approve it.</p>{linkedImage&&<img src={linkedImage} alt="Original Shopify product, not personalized"/>}</div>}
+         <details className="am-simple-accordion"><summary>View optional AI copy and editorial details</summary>
+           <ExperiencePreview content={selectedAI.data} productImageUrl={linkedImage} productImageAlt={selected.productTitle}/>
+         </details>
          <p className="am-simple-caption">AI photoshoots are creative visualizations. Confirm that the product appearance is accurate before publishing; the original Shopify gallery is unaffected.</p>
        </>}
        {selectedAI.success&&!isExperience(selectedAI.data)&&<div className="ad-preview">
