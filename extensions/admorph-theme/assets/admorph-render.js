@@ -7,7 +7,8 @@
     var gallery=root.querySelector && root.querySelector(".admorph-shopify-gallery");
     var photoSource=gallery && gallery.content ? gallery.content : gallery;
     var photos=photoSource ? Array.prototype.slice.call(photoSource.querySelectorAll("[data-src]")).map(function(node){
-      return {url:node.getAttribute("data-src"),alt:node.getAttribute("data-alt") || "Shopify product"};
+      var source=node.getAttribute("data-src")||"";
+      return {url:source.indexOf("//")===0?"https:"+source:source,alt:node.getAttribute("data-alt") || "Shopify product"};
     }).filter(function(item){return /^https:\/\//.test(item.url);}).slice(0,4):[];
     var frame = document.createElement("div");
     var visual=c.visual || {};
@@ -34,6 +35,7 @@
     copy.appendChild(headline);
     copy.appendChild(introduction);
     var imageUrl = root.getAttribute("data-product-image") || "";
+    if (imageUrl.indexOf("//")===0) imageUrl="https:"+imageUrl;
     if (/^https:\/\/[^<>"']+$/.test(imageUrl)) {
       var imageWrap = document.createElement("div");
       imageWrap.className = "admorph-experience-image";
@@ -167,27 +169,112 @@
       connection.appendChild(textNode("small", c.cta.secondary, "admorph-experience-cta-note"));
     }
     frame.appendChild(connection);
+    // The storefront keeps one native purchase experience. The personalized
+    // headline and verified Shopify product media are mounted WITHIN it.
+    // Avoid separate marketing-card sections masquerading as product content.
+    if (immersive && !(window.Shopify && window.Shopify.designMode)) {
+      var purchaseForm=findFirst([
+        'main form[action*="/cart/add"]',
+        'main product-form form',
+        'main [data-product-form] form'
+      ]);
+      var nativeSection=purchaseForm && purchaseForm.closest(
+        '.shopify-section, [id^="shopify-section-"], [data-section-type="product"], .product'
+      );
+      var productInfo=purchaseForm && (
+        purchaseForm.closest('.product__info-wrapper, .product-info, .product__info-container, .product-single__meta, .product__details, [data-product-info]') ||
+        purchaseForm.parentElement
+      );
+      var nativeTitle=nativeSection && typeof nativeSection.querySelector==="function" && nativeSection.querySelector(
+        '.product__title, .product-info__title, .product-single__title, [data-product-title], .product-title, h1'
+      );
+      if(nativeSection && productInfo && nativeTitle && nativeTitle.parentNode &&
+        nativeSection.contains(nativeTitle) && !nativeTitle.closest(".admorph-widget")) {
+        // Preserve the original H1, product gallery, price, variants and form.
+        // Add an ad-specific editorial introduction directly before the H1.
+        var nativeIntro=document.createElement("div");
+        nativeIntro.className="admorph-native-intro admorph-palette-"+palette;
+        nativeIntro.appendChild(textNode("span",c.hero.eyebrow,"admorph-native-eyebrow"));
+        nativeIntro.appendChild(textNode("h2",c.hero.headline,"admorph-native-headline"));
+        nativeIntro.appendChild(textNode("p",c.hero.subheadline,"admorph-native-subheadline"));
+        // Prioritize authentic Shopify photos whose merchant-provided alt text
+        // matches the approved ad angle; never fabricate product photography.
+        var words=(String(c.angle||"")+" "+String(c.hero.headline||""))
+          .toLowerCase().match(/[a-z\\u00c0-\\u024f]{4,}/g)||[];
+        var ranked=photos.map(function(photo,index){
+          var label=photo.alt.toLowerCase();
+          return {photo:photo,index:index,score:words.reduce(function(score,w){
+            return score+(label.indexOf(w)!==-1?1:0);
+          },0)};
+        }).sort(function(a,b){return b.score-a.score||a.index-b.index;});
+        if(ranked.length){
+          var media=document.createElement("div");
+          media.className="admorph-native-media";
+          var active=document.createElement("img");
+          active.className="admorph-native-photo";
+          active.src=ranked[0].photo.url;
+          active.alt=ranked[0].photo.alt;
+          active.loading="lazy";
+          active.decoding="async";
+          media.appendChild(active);
+          if(ranked.length>1){
+            var chooser=document.createElement("div");
+            chooser.className="admorph-native-thumbnails";
+            chooser.setAttribute("aria-label","Real Shopify product images");
+            ranked.forEach(function(entry,i){
+              var choice=document.createElement("button");
+              choice.type="button";
+              choice.className="admorph-native-thumbnail";
+              choice.setAttribute("aria-label","View product image "+(i+1));
+              choice.setAttribute("aria-pressed",i===0?"true":"false");
+              var thumbnail=document.createElement("img");
+              thumbnail.src=entry.photo.url;
+              thumbnail.alt="";
+              thumbnail.loading="lazy";
+              choice.appendChild(thumbnail);
+              choice.addEventListener("click",function(){
+                active.src=entry.photo.url;
+                active.alt=entry.photo.alt;
+                Array.prototype.forEach.call(chooser.children,function(button){
+                  button.setAttribute("aria-pressed",button===choice?"true":"false");
+                });
+              });
+              chooser.appendChild(choice);
+            });
+            media.appendChild(chooser);
+          }
+          nativeIntro.appendChild(media);
+        }
+        // Useful approved, product-specific information without repetitive cards.
+        var details=document.createElement("details");
+        details.className="admorph-native-details";
+        var summary=document.createElement("summary");
+        summary.textContent=c.adConnection.title;
+        details.appendChild(summary);
+        details.appendChild(textNode("p",c.adConnection.text,"admorph-native-detail-copy"));
+        nativeIntro.appendChild(details);
+        // Mount the curated view beside the existing product heading, without
+        // removing or rewriting price, inventory, native gallery or purchase UI.
+        var oldIntro=nativeSection.querySelector(".admorph-native-intro");
+        if(oldIntro)oldIntro.remove();
+        nativeTitle.insertAdjacentElement("beforebegin",nativeIntro);
+        // The original product's gallery is authoritative and stays interactive.
+        // Put the ad angle at the center of the product, not below the buy button.
+        var nativeAngle=textNode("span",c.angle,"admorph-native-angle");
+        nativeIntro.insertBefore(nativeAngle,nativeIntro.firstChild);
+        nativeSection.classList.add("admorph-native-product");
+        nativeSection.setAttribute("data-admorph-ad",adId);
+        root.replaceChildren();
+        root.hidden=true;
+        root.setAttribute("data-admorph-state","native");
+        root.setAttribute("data-admorph-version","3.0");
+        return;
+      }
+    }
     root.replaceChildren(frame);
     root.hidden = false;
     root.setAttribute("data-admorph-state", "rendered");
     root.setAttribute("data-admorph-version", "2.0");
-    // Elevate the ad-matched experience ABOVE the existing main product layout.
-    // The native Shopify gallery, variants, price and cart form remain untouched.
-    if(immersive && !(window.Shopify && window.Shopify.designMode)){
-      var main=document.querySelector("main");
-      var form=findFirst(['main form[action*="/cart/add"]',
-        'main product-form','main [data-product-form]']);
-      var section=form && typeof form.closest==="function" &&
-        (form.closest(".shopify-section") ||
-         form.closest("[id^='shopify-section-']") ||
-         form.closest("[data-section-type='product']") ||
-         form.closest(".product"));
-      if(main && section && main.contains(section) && section!==root &&
-        section.parentNode && typeof section.insertAdjacentElement==="function"){
-        section.insertAdjacentElement("beforebegin",root);
-        root.classList.add("admorph-immersive-mounted");
-      }
-    }
 
   };
 })();

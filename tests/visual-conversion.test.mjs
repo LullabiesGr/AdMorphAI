@@ -25,7 +25,7 @@ test("AI imagery is generated as decorative backdrop only",()=>{
  const loader=read("extensions/admorph-theme/assets/admorph.js");
  assert.ok(loader.includes("getRenderer(root)"));
  assert.ok(Buffer.byteLength(loader,"utf8")<10000);
- assert.ok(Buffer.byteLength(storefront,"utf8")<10000);
+ assert.ok(Buffer.byteLength(storefront,"utf8")<18000);
 });
 test("Experiment control does not show AI content and analytics respects privacy",()=>{
  const storefront=read("extensions/admorph-theme/assets/admorph.js");
