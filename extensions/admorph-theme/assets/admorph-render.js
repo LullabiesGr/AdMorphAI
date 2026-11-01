@@ -187,7 +187,7 @@
         '.product__title, .product-info__title, .product-single__title, [data-product-title], .product-title, h1'
       );
       if(nativeSection && productInfo && nativeTitle && nativeTitle.parentNode &&
-        nativeSection.contains(nativeTitle) && !nativeSection.contains(root)) {
+        nativeSection.contains(nativeTitle) && !nativeTitle.closest(".admorph-widget")) {
         // Preserve the original H1, product gallery, price, variants and form.
         // Add an ad-specific editorial introduction directly before the H1.
         var nativeIntro=document.createElement("div");
