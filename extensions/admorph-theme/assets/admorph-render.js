@@ -185,7 +185,7 @@
         purchaseForm.closest('.product__info-wrapper, .product-info, .product__info-container, .product-single__meta, .product__details, [data-product-info]') ||
         purchaseForm.parentElement
       );
-      var nativeTitle=nativeSection && nativeSection.querySelector(
+      var nativeTitle=nativeSection && typeof nativeSection.querySelector==="function" && nativeSection.querySelector(
         '.product__title, .product-info__title, .product-single__title, [data-product-title], .product-title, h1'
       );
       if(nativeSection && productInfo && nativeTitle && nativeTitle.parentNode &&
