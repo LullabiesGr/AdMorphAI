@@ -7,7 +7,8 @@
     var gallery=root.querySelector && root.querySelector(".admorph-shopify-gallery");
     var photoSource=gallery && gallery.content ? gallery.content : gallery;
     var photos=photoSource ? Array.prototype.slice.call(photoSource.querySelectorAll("[data-src]")).map(function(node){
-      return {url:node.getAttribute("data-src"),alt:node.getAttribute("data-alt") || "Shopify product"};
+      var source=node.getAttribute("data-src")||"";
+      return {url:source.indexOf("//")===0?"https:"+source:source,alt:node.getAttribute("data-alt") || "Shopify product"};
     }).filter(function(item){return /^https:\/\//.test(item.url);}).slice(0,4):[];
     var frame = document.createElement("div");
     var visual=c.visual || {};
@@ -34,6 +35,7 @@
     copy.appendChild(headline);
     copy.appendChild(introduction);
     var imageUrl = root.getAttribute("data-product-image") || "";
+    if (imageUrl.indexOf("//")===0) imageUrl="https:"+imageUrl;
     if (/^https:\/\/[^<>"']+$/.test(imageUrl)) {
       var imageWrap = document.createElement("div");
       imageWrap.className = "admorph-experience-image";
