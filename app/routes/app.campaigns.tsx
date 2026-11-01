@@ -463,11 +463,11 @@ export default function Campaigns(){
            <button type="submit" className="ad-btn ghost" disabled={artwork.state!=="idle"}>Refresh image preview</button></artwork.Form>
          </div>
          {artworkData&&"draftImage" in artworkData&&artworkData.draftImage&&<div className="am-simple-art">
-            <img src={artworkData.draftImage} alt="Draft AI lifestyle environment waiting for approval"/>
+            <div className="am-ai-scene-preview"><img className="am-ai-scene-bg" src={artworkData.draftImage} alt="Draft AI lifestyle environment"/>{linkedImage&&<img className="am-ai-scene-product" src={linkedImage} alt={selected.productTitle}/>}<span>AI environment + real Shopify product</span></div>
             <strong>Draft image — not published</strong>
            </div>}
          {artworkData&&"publishedImage" in artworkData&&artworkData.publishedImage&&<div className="am-simple-art">
-            <img src={artworkData.publishedImage} alt="Current published decorative background"/>
+            <div className="am-ai-scene-preview"><img className="am-ai-scene-bg" src={artworkData.publishedImage} alt="Published AI lifestyle environment"/>{linkedImage&&<img className="am-ai-scene-product" src={linkedImage} alt={selected.productTitle}/>}<span>Live campaign composition</span></div>
             <strong>Published campaign environment</strong>
            </div>}
          <div className="am-simple-primary-actions">
