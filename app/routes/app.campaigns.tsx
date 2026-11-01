@@ -6,7 +6,7 @@ import prisma from "../db.server";
 import {authenticate} from "../shopify.server";
 import {listProducts,getProduct} from "../services/products.server";
 import {generateExperience,generateVisualDirection} from "../services/ai.server";
-import {generateCampaignBackdrop} from "../services/image-generation.server";
+import {generateProductPhotoshoot} from "../services/image-generation.server";
 import {experimentReport} from "../services/experiment.server";
 import {ExperiencePreview,ExperienceEditor} from "../components/experience-preview";
 import {variantSchema} from "../lib/variant";
@@ -57,7 +57,7 @@ export const action=async({request}:ActionFunctionArgs)=>{
     if(!ad)throw new Error("Meta ad not found");
     const product=await getProduct(admin,campaign.productId);
     const visual=resolveVisualDirection(experience.data);
-    const bytes=await generateCampaignBackdrop({
+    const bytes=await generateProductPhotoshoot({
       product,adCreative:ad.creative,angle:experience.data.angle,
       palette:visual.palette,mood:visual.mood
     });
@@ -65,7 +65,7 @@ export const action=async({request}:ActionFunctionArgs)=>{
       where:{campaignId:id},create:{campaignId:id,shop,draftData:new Uint8Array(bytes)},
       update:{draftData:new Uint8Array(bytes)}
     });
-    return {ok:true,message:"AI lifestyle scene generated as a draft. Preview the composition and approve it before publishing.",campaignId:id};
+    return {ok:true,message:"AI reference-based product photoshoot generated. Review the product carefully before approving the creative.",campaignId:id};
   }
   if(intent==="preview_backdrop"){
     const id=String(data.get("id")||"");
@@ -87,7 +87,7 @@ export const action=async({request}:ActionFunctionArgs)=>{
       await prisma.campaignImage.update({where:{campaignId:id},data:{
         publishedData:image.draftData,draftData:null
       }});
-      return {ok:true,message:"AI lifestyle scene published. The real Shopify product image remains the foreground product."};
+      return {ok:true,message:"Approved AI product photoshoot published as campaign hero. The native Shopify gallery remains available."};
     }
     await prisma.campaignImage.updateMany({where:{campaignId:id,shop},data:
       intent==="discard_backdrop"?{draftData:null}:{publishedData:null}});
@@ -338,8 +338,8 @@ export default function Campaigns(){
      {feedback&&<s-banner tone={feedback.ok?"success":"critical"}>{feedback.message}</s-banner>}
      {navigation.state!=="idle"&&<div role="status" aria-live="polite" className="am-ai-generating">
        <span className="am-ai-spinner" aria-hidden="true"/>
-       <div><strong>{generatingVisual?"Creating your cinematic AI scene…":runningIntent==="generate"?"Creating your ad-matched product experience…":"Applying your campaign changes…"}</strong>
-       <p>{generatingVisual?"Generating a photographic environment matched to the ad. The original Shopify product remains untouched.": "The storefront remains unchanged until you approve and publish."}</p></div>
+       <div><strong>{generatingVisual?"Generating reference-based AI product photoshoot…":runningIntent==="generate"?"Creating your ad-matched product experience…":"Applying your campaign changes…"}</strong>
+       <p>{generatingVisual?"Creating an original campaign image using the Shopify product photograph as a reference. Check every detail before approving.": "The storefront remains unchanged until you approve and publish."}</p></div>
      </div>}
 
      <div className="am-simple-steps" aria-label="How AdMorph works">
@@ -403,12 +403,12 @@ export default function Campaigns(){
         <span>{selectedAI.success?"Review it below, then publish.":"Use the button below to generate the first version."}</span>
        </div>}
        {selectedAI.success&&isExperience(selectedAI.data)&&<div className="am-visual-hero-action">
-         <div><strong>AI Visual Studio</strong><p>Create the cinematic product scene matched to this Meta ad.</p></div>
+         <div><strong>AI Visual Studio</strong><p>Generate a new ad-specific product photograph using your real Shopify product photo as reference.</p></div>
          <Form method="post">
            <input type="hidden" name="intent" value="generate_backdrop"/>
            <input type="hidden" name="id" value={selected.id}/>
            <button type="submit" className="ad-btn" disabled={navigation.state!=="idle"}>
-             {generatingVisual?"Generating your scene…":"Generate WOW visual scene"}
+             {generatingVisual?"Creating product photoshoot…":"Generate AI Product Photoshoot"}
            </button>
          </Form>
        </div>}
@@ -429,7 +429,7 @@ export default function Campaigns(){
        {selectedAI.success&&isExperience(selectedAI.data)&&<>
          <p className="am-simple-preview-label">PREVIEW — WHAT THE VISITOR WILL SEE</p>
          <ExperiencePreview content={selectedAI.data} productImageUrl={linkedImage} productImageAlt={selected.productTitle}/>
-         <p className="am-simple-caption">The hero combines your approved AI environment with the genuine Shopify product photo. The actual theme layout is shown on your live preview URL after publishing.</p>
+         <p className="am-simple-caption">AI photoshoots are creative visualizations. Confirm that the product appearance is accurate before publishing; the original Shopify gallery is unaffected.</p>
        </>}
        {selectedAI.success&&!isExperience(selectedAI.data)&&<div className="ad-preview">
           <h3>{selectedAI.data.headline}</h3><p>{selectedAI.data.subheadline}</p>
@@ -463,7 +463,7 @@ export default function Campaigns(){
        {selectedAI.success&&isExperience(selectedAI.data)&&<details className="am-simple-accordion">
         <summary>AI scene preview and publishing</summary>
         <div className="am-simple-accordion-body">
-         <p className="ad-muted">Generate a distinct photographic lifestyle environment for this Meta ad. AdMorph places the genuine Shopify product photo above the scene. Your customer always sees the original product; no AI-generated product claims.</p>
+         <p className="ad-muted">Generate a product-focused photographic campaign hero based on your original Shopify photo. Carefully inspect colors, design, branding and any product details before publishing. The native Shopify gallery and checkout remain unchanged.</p>
          <div className="am-simple-primary-actions">
           <Form method="post"><input type="hidden" name="intent" value="generate_visual"/><input type="hidden" name="id" value={selected.id}/>
            <button type="submit" className="ad-btn ghost">AI suggest a new design</button></Form>
@@ -473,11 +473,11 @@ export default function Campaigns(){
            <button type="submit" className="ad-btn ghost" disabled={artwork.state!=="idle"}>Refresh image preview</button></artwork.Form>
          </div>
          {artworkData&&"draftImage" in artworkData&&artworkData.draftImage&&<div className="am-simple-art">
-            <div className="am-ai-scene-preview"><img className="am-ai-scene-bg" src={artworkData.draftImage} alt="Draft AI lifestyle environment"/>{linkedImage&&<img className="am-ai-scene-product" src={linkedImage} alt={selected.productTitle}/>}<span>AI environment + real Shopify product</span></div>
+            <div className="am-ai-scene-preview"><img className="am-ai-scene-bg" src={artworkData.draftImage} alt="AI photoshoot draft"/><span>AI-generated product photoshoot · Review for accuracy</span></div>
             <strong>Draft image — not published</strong>
            </div>}
          {artworkData&&"publishedImage" in artworkData&&artworkData.publishedImage&&<div className="am-simple-art">
-            <div className="am-ai-scene-preview"><img className="am-ai-scene-bg" src={artworkData.publishedImage} alt="Published AI lifestyle environment"/>{linkedImage&&<img className="am-ai-scene-product" src={linkedImage} alt={selected.productTitle}/>}<span>Live campaign composition</span></div>
+            <div className="am-ai-scene-preview"><img className="am-ai-scene-bg" src={artworkData.publishedImage} alt="Published AI product photoshoot"/><span>Published AI campaign photograph</span></div>
             <strong>Published campaign environment</strong>
            </div>}
          <div className="am-simple-primary-actions">
