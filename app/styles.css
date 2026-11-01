@@ -419,3 +419,8 @@
  .am-experience-preview.am-preview-immersive .am-experience-product-image img{min-height:220px;max-height:290px}
  .am-experience-preview.am-preview-immersive .am-experience-banner{order:2;padding:22px}
 }
+
+.am-ai-generating{display:flex;align-items:center;gap:16px;padding:20px 24px;margin:16px 0;background:#172238;color:#fff;border-radius:12px;border:1px solid #415779;box-shadow:0 10px 30px rgba(0,0,0,.12)}
+.am-ai-generating strong{display:block;font-size:16px}.am-ai-generating p{margin:5px 0 0;opacity:.75;font-size:13px}
+.am-ai-spinner{display:block;width:35px;height:35px;flex:none;border:3px solid rgba(255,255,255,.2);border-top-color:#b5d8ff;border-radius:50%;animation:amSpin .8s linear infinite}
+@keyframes amSpin{to{transform:rotate(360deg)}}@media(prefers-reduced-motion:reduce){.am-ai-spinner{animation:none;border-top-color:#fff}}
