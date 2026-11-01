@@ -429,3 +429,5 @@
 .am-ai-scene-bg{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
 .am-ai-scene-product{position:absolute;z-index:1;inset:6% 9%;width:82%;height:85%;object-fit:contain;filter:drop-shadow(0 16px 24px rgba(0,0,0,.3))}
 .am-ai-scene-preview span{position:absolute;z-index:2;bottom:12px;left:12px;background:rgba(0,0,0,.65);color:#fff;padding:7px 10px;font-size:12px;border-radius:6px}
+
+.am-visual-hero-action{display:flex;justify-content:space-between;align-items:center;gap:18px;flex-wrap:wrap;margin:18px 0;padding:20px;border:1px solid #b6c7eb;border-radius:14px;background:linear-gradient(110deg,#edf4ff,#f6f1ff)}.am-visual-hero-action strong{font-size:18px;color:#152542}.am-visual-hero-action p{margin:5px 0 0;color:#46546a;font-size:13px}.am-visual-hero-action .ad-btn{white-space:normal}
