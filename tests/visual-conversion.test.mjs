@@ -15,12 +15,12 @@ test("Web Pixel requires analytics privacy consent and reads only Shopify standa
 });
 test("AI imagery is generated as decorative backdrop only",()=>{
  const source=read("app/services/image-generation.server.ts");
- assert.match(source,/photorealistic.*lifestyle environment/i);
- assert.match(source,/DO NOT create, replicate, alter/i);
+ assert.match(source,/reference-driven campaign product photoshoot/i);
+ assert.match(source,/Preserve its recognizable silhouette/i);
  assert.match(source,/output_format:"webp"/);
  assert.match(source,/gpt-image-2.5-flare/);
  const storefront=read("extensions/admorph-theme/assets/admorph-render.js");
- assert.ok(storefront.includes("admorph-ai-backdrop"));
+ assert.ok(storefront.includes("admorph-photoshoot-image"));
  assert.ok(storefront.includes('data-product-image'));
  assert.ok(storefront.includes('admorph-visual-'));
  const loader=read("extensions/admorph-theme/assets/admorph.js");
