@@ -167,27 +167,52 @@
       connection.appendChild(textNode("small", c.cta.secondary, "admorph-experience-cta-note"));
     }
     frame.appendChild(connection);
+    // The storefront keeps one native purchase experience. The personalized
+    // headline and verified Shopify product media are mounted WITHIN it.
+    // Avoid separate marketing-card sections masquerading as product content.
+    if (immersive && !(window.Shopify && window.Shopify.designMode)) {
+      var purchaseForm=findFirst([
+        'main form[action*="/cart/add"]',
+        'main product-form form',
+        'main [data-product-form] form'
+      ]);
+      var nativeSection=purchaseForm && purchaseForm.closest(
+        '.shopify-section, [id^="shopify-section-"], [data-section-type="product"], .product'
+      );
+      var productInfo=purchaseForm && (
+        purchaseForm.closest('.product__info-wrapper, .product-info, .product__info-container, .product-single__meta, .product__details, [data-product-info]') ||
+        purchaseForm.parentElement
+      );
+      var nativeTitle=nativeSection && nativeSection.querySelector(
+        '.product__title, .product-info__title, .product-single__title, [data-product-title], .product-title, h1'
+      );
+      if(nativeSection && productInfo && nativeTitle && nativeTitle.parentNode &&
+        nativeSection.contains(nativeTitle) && !nativeSection.contains(root)) {
+        // Preserve the original H1, product gallery, price, variants and form.
+        // Add an ad-specific editorial introduction directly before the H1.
+        var nativeIntro=document.createElement("div");
+        nativeIntro.className="admorph-native-intro admorph-palette-"+palette;
+        nativeIntro.appendChild(textNode("span",c.hero.eyebrow,"admorph-native-eyebrow"));
+        nativeIntro.appendChild(textNode("h2",c.hero.headline,"admorph-native-headline"));
+        nativeIntro.appendChild(textNode("p",c.hero.subheadline,"admorph-native-subheadline"));
+        nativeTitle.insertAdjacentElement("beforebegin",nativeIntro);
+        // The original product's gallery is authoritative and stays interactive.
+        // Put the ad angle at the center of the product, not below the buy button.
+        var nativeAngle=textNode("span",c.angle,"admorph-native-angle");
+        nativeIntro.insertBefore(nativeAngle,nativeIntro.firstChild);
+        nativeSection.classList.add("admorph-native-product");
+        nativeSection.setAttribute("data-admorph-ad",adId);
+        root.replaceChildren();
+        root.hidden=true;
+        root.setAttribute("data-admorph-state","native");
+        root.setAttribute("data-admorph-version","3.0");
+        return;
+      }
+    }
     root.replaceChildren(frame);
     root.hidden = false;
     root.setAttribute("data-admorph-state", "rendered");
     root.setAttribute("data-admorph-version", "2.0");
-    // Elevate the ad-matched experience ABOVE the existing main product layout.
-    // The native Shopify gallery, variants, price and cart form remain untouched.
-    if(immersive && !(window.Shopify && window.Shopify.designMode)){
-      var main=document.querySelector("main");
-      var form=findFirst(['main form[action*="/cart/add"]',
-        'main product-form','main [data-product-form]']);
-      var section=form && typeof form.closest==="function" &&
-        (form.closest(".shopify-section") ||
-         form.closest("[id^='shopify-section-']") ||
-         form.closest("[data-section-type='product']") ||
-         form.closest(".product"));
-      if(main && section && main.contains(section) && section!==root &&
-        section.parentNode && typeof section.insertAdjacentElement==="function"){
-        section.insertAdjacentElement("beforebegin",root);
-        root.classList.add("admorph-immersive-mounted");
-      }
-    }
 
   };
 })();
