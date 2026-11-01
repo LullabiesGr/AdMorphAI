@@ -3,6 +3,11 @@
   // Standalone V2 renderer, fetched only when an ad-matched experience is required.
   window.__admorphRenderExperience = function(root, c, hasImage, adId, token, helpers) {
     var textNode=helpers.textNode, findFirst=helpers.findFirst, publishPixelEvent=helpers.publishPixelEvent;
+    var immersive=root.getAttribute("data-admorph-immersive")==="true";
+    var gallery=root.querySelector && root.querySelector(".admorph-shopify-gallery");
+    var photos=gallery ? Array.prototype.slice.call(gallery.querySelectorAll("[data-src]")).map(function(node){
+      return {url:node.getAttribute("data-src"),alt:node.getAttribute("data-alt") || "Shopify product"};
+    }).filter(function(item){return /^https:\/\//.test(item.url);}).slice(0,4):[];
     var frame = document.createElement("div");
     var visual=c.visual || {};
     var compositions=["split","spotlight","gallery"];
@@ -20,6 +25,10 @@
     var tag = textNode("span", c.hero.eyebrow, "admorph-experience-eyebrow");
     var headline = textNode("h2", c.hero.headline, "admorph-experience-headline");
     var introduction = textNode("p", c.hero.subheadline, "admorph-experience-intro");
+    if(immersive){
+      copy.appendChild(textNode("span","THE AD-MATCHED EDIT","admorph-immersive-intent"));
+      copy.appendChild(textNode("span",c.angle,"admorph-immersive-angle"));
+    }
     copy.appendChild(tag);
     copy.appendChild(headline);
     copy.appendChild(introduction);
@@ -33,6 +42,32 @@
       img.loading = "lazy";
       img.decoding = "async";
       imageWrap.appendChild(img);
+      if(immersive && photos.length>1){
+        var thumbs=document.createElement("div");
+        thumbs.className="admorph-immersive-gallery";
+        thumbs.setAttribute("aria-label","Shopify product photos");
+        photos.forEach(function(photo,index){
+          var thumbnail=document.createElement("button");
+          thumbnail.type="button";
+          thumbnail.className="admorph-immersive-thumb";
+          thumbnail.setAttribute("aria-label","View real product photo "+(index+1));
+          thumbnail.setAttribute("aria-pressed",index===0?"true":"false");
+          var thumbImage=document.createElement("img");
+          thumbImage.src=photo.url;
+          thumbImage.alt="";
+          thumbImage.loading="lazy";
+          thumbnail.appendChild(thumbImage);
+          thumbnail.addEventListener("click",function(){
+            img.src=photo.url;
+            img.alt=photo.alt;
+            Array.prototype.forEach.call(thumbs.children,function(btn){
+              btn.setAttribute("aria-pressed",btn===thumbnail?"true":"false");
+            });
+          });
+          thumbs.appendChild(thumbnail);
+        });
+        imageWrap.appendChild(thumbs);
+      }
       hero.appendChild(imageWrap);
     } else {
       hero.classList.add("admorph-experience-no-image");
@@ -88,6 +123,23 @@
     connection.appendChild(textNode("span", "Picked for this moment", "admorph-experience-eyebrow"));
     connection.appendChild(textNode("h3", c.adConnection.title, "admorph-experience-connection-title"));
     connection.appendChild(textNode("p", c.adConnection.text, "admorph-experience-card-text"));
+    if(immersive){
+      copy.appendChild(textNode("span","01 / THE STORY BEHIND THIS AD","admorph-immersive-index"));
+      var heroButton=document.createElement("button");
+      heroButton.type="button";
+      heroButton.className="admorph-immersive-shop";
+      heroButton.textContent=c.cta.primary;
+      heroButton.addEventListener("click",function(){
+        publishPixelEvent("admorph:experiment_cta",token);
+        var purchase=findFirst(['main form[action*="/cart/add"] button[type="submit"]',
+          'main product-form button[type="submit"]','main form[action*="/cart/add"]']);
+        if(purchase){
+          purchase.scrollIntoView({behavior:"smooth",block:"center"});
+          if(typeof purchase.focus==="function")purchase.focus({preventScroll:true});
+        }
+      });
+      copy.appendChild(heroButton);
+    }
     var button = document.createElement("button");
     button.type = "button";
     button.className = "admorph-experience-cta";
@@ -118,6 +170,23 @@
     root.hidden = false;
     root.setAttribute("data-admorph-state", "rendered");
     root.setAttribute("data-admorph-version", "2.0");
+    // Elevate the ad-matched experience ABOVE the existing main product layout.
+    // The native Shopify gallery, variants, price and cart form remain untouched.
+    if(immersive && !(window.Shopify && window.Shopify.designMode)){
+      var main=document.querySelector("main");
+      var form=findFirst(['main form[action*="/cart/add"]',
+        'main product-form','main [data-product-form]']);
+      var section=form && typeof form.closest==="function" &&
+        (form.closest(".shopify-section") ||
+         form.closest("[id^='shopify-section-']") ||
+         form.closest("[data-section-type='product']") ||
+         form.closest(".product"));
+      if(main && section && main.contains(section) && section!==root &&
+        section.parentNode && typeof section.insertAdjacentElement==="function"){
+        section.insertAdjacentElement("beforebegin",root);
+        root.classList.add("admorph-immersive-mounted");
+      }
+    }
 
   };
 })();

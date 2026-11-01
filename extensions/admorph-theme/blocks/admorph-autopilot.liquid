@@ -6,9 +6,16 @@
     data-product-image="{% if product.featured_image %}{{ product.featured_image | image_url: width: 1200 | escape }}{% endif %}"
     data-product-image-alt="{{ product.featured_image.alt | default: product.title | escape }}"
     data-admorph-placement="{{ block.settings.placement | escape }}"
+    data-admorph-immersive="{{ block.settings.immersive | json }}"
     aria-live="polite"
     hidden
-  ></div>
+  >
+    <template class="admorph-shopify-gallery">
+      {% for image in product.images limit: 4 %}
+        <span data-src="{{ image | image_url: width: 1400 | escape }}" data-alt="{{ image.alt | default: product.title | escape }}"></span>
+      {% endfor %}
+    </template>
+  </div>
 {% endif %}
 {% schema %}
 {
@@ -18,6 +25,12 @@
   "stylesheet": "admorph.css",
   "enabled_on": {"templates": ["product"]},
   "settings": [
+    {
+      "type": "checkbox",
+      "id": "immersive",
+      "label": "Show immersive ad-matched hero before product",
+      "default": true
+    },
     {
       "type": "select",
       "id": "placement",

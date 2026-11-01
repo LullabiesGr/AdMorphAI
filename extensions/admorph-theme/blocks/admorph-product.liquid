@@ -1,8 +1,14 @@
 {% if product %}
   <div class="admorph-widget" data-admorph-renderer-url="{{ 'admorph-render.js' | asset_url }}"
+    data-admorph-immersive="{{ block.settings.immersive | json }}"
     data-product-handle="{{ product.handle | escape }}"
     data-product-image="{% if product.featured_image %}{{ product.featured_image | image_url: width: 1200 | escape }}{% endif %}"
     data-product-image-alt="{{ product.featured_image.alt | default: product.title | escape }}" aria-live="polite" {% unless request.design_mode %}hidden{% endunless %}>
+    <template class="admorph-shopify-gallery">
+      {% for image in product.images limit: 4 %}
+        <span data-src="{{ image | image_url: width: 1400 | escape }}" data-alt="{{ image.alt | default: product.title | escape }}"></span>
+      {% endfor %}
+    </template>
     {% if request.design_mode %}
       <div class="admorph-editor-preview">
         <strong>AdMorph AI personalization</strong>
@@ -19,6 +25,10 @@
   "javascript": "admorph.js",
   "stylesheet": "admorph.css",
   "enabled_on": {"templates": ["product"]},
-  "settings": []
+  "settings": [
+    {"type": "checkbox", "id": "immersive",
+     "label": "Show immersive ad-matched hero before product",
+     "default": true}
+  ]
 }
 {% endschema %}
