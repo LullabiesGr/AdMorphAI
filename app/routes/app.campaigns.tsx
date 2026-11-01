@@ -402,6 +402,16 @@ export default function Campaigns(){
         <strong>{selectedAI.success?"This AI page is not live yet.":"No AI page exists yet."}</strong>
         <span>{selectedAI.success?"Review it below, then publish.":"Use the button below to generate the first version."}</span>
        </div>}
+       {selectedAI.success&&isExperience(selectedAI.data)&&<div className="am-visual-hero-action">
+         <div><strong>AI Visual Studio</strong><p>Create the cinematic product scene matched to this Meta ad.</p></div>
+         <Form method="post">
+           <input type="hidden" name="intent" value="generate_backdrop"/>
+           <input type="hidden" name="id" value={selected.id}/>
+           <button type="submit" className="ad-btn" disabled={navigation.state!=="idle"}>
+             {generatingVisual?"Generating your scene…":"Generate WOW visual scene"}
+           </button>
+         </Form>
+       </div>}
        <div className="am-simple-primary-actions">
          <Form method="post"><input type="hidden" name="intent" value="generate"/><input type="hidden" name="id" value={selected.id}/>
            <button className={selectedAI.success?"ad-btn ghost":"ad-btn"} type="submit">
@@ -451,7 +461,7 @@ export default function Campaigns(){
         </div>
        </details>}
        {selectedAI.success&&isExperience(selectedAI.data)&&<details className="am-simple-accordion">
-        <summary>AI Visual Studio — cinematic campaign scenes</summary>
+        <summary>AI scene preview and publishing</summary>
         <div className="am-simple-accordion-body">
          <p className="ad-muted">Generate a distinct photographic lifestyle environment for this Meta ad. AdMorph places the genuine Shopify product photo above the scene. Your customer always sees the original product; no AI-generated product claims.</p>
          <div className="am-simple-primary-actions">
