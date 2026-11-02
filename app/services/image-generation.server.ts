@@ -1,4 +1,5 @@
 import {metaCreativeCopy} from "./meta.server";
+import {randomInt,randomUUID} from "node:crypto";
 const IMAGE_MAX_BYTES=1_750_000;
 export async function generateCampaignBackdrop(input:{
  product:{title:string;description:string};
@@ -55,12 +56,24 @@ export async function generateProductPhotoshoot(input:{
  const source=input.product.featuredImage?.url;
  if(!source||!/^https:\/\/[^\s"'<>]+$/.test(source))throw new Error("This product needs a valid Shopify featured image for an AI photoshoot.");
  const creative=metaCreativeCopy(input.adCreative);
+ const directions=[
+  "Extreme low camera angle, sweeping cinematic depth and dramatic morning sunlight.",
+  "Premium aerial editorial viewpoint with long shadows and bold geometric composition.",
+  "Intimate close-up editorial composition with dramatic side lighting and rich environmental textures.",
+  "Wide immersive landscape advertising composition, dynamic perspective and atmospheric motion.",
+  "High-end studio-meets-location fashion campaign, sculptural lighting and unconventional framing.",
+  "Golden hour backlit environmental portrait of the merchandise with strong negative space."
+ ];
+ const direction=directions[randomInt(directions.length)];
+ const takeId=randomUUID();
  const prompt=[
   "Create a premium photographic ecommerce CAMPAIGN HERO using the supplied ORIGINAL PRODUCT PHOTO AS IMAGE REFERENCE.",
   "Make the original merchandise the undisputed main subject in an authentic lifestyle editorial photoshoot.",
   "Preserve its recognizable silhouette, colors, branding, logos, construction and distinguishing details as closely as possible.",
   "Do not replace the reference product with a different model. Do not invent visible features, specifications, endorsements or text.",
   "Build a coherent location, perspective, shadows and premium photographic lighting appropriate to this advertisement.",
+  "IMPORTANT: this is a NEW alternative image, not a reproduction of any earlier output.",
+  "Distinct creative take:",takeId,"Art direction:",direction,
   "Use this ad angle:",input.angle,"Mood:",input.mood,"Palette:",input.palette,
   "Product:",input.product.title.slice(0,120),
   "Verified merchant description:",input.product.description.slice(0,1200),
