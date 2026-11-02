@@ -351,6 +351,21 @@ export default function Campaigns(){
  const selectedImageStatus=d.images.find(x=>x.campaignId===selectedId);
  const photoshootReady=Boolean(selectedImageStatus?.hasDraft||selectedImageStatus?.hasPublished);
  const experimentOn=Boolean(selected&&d.experiments.find(e=>e.campaignId===selected.id)?.enabled);
+ const baseline=report?.A||{},personalized=report?.B||{};
+ const baselineViews=baseline.view||0,personalizedViews=personalized.view||0;
+ const baselineOrders=baseline.purchase||0,personalizedOrders=personalized.purchase||0;
+ const baselineRate=baselineViews?baselineOrders/baselineViews:0;
+ const personalizedRate=personalizedViews?personalizedOrders/personalizedViews:0;
+ const enoughData=baselineViews>=100&&personalizedViews>=100&&baselineOrders>=5&&personalizedOrders>=5;
+ const relativeUplift=baselineRate>0?(personalizedRate/baselineRate-1)*100:null;
+ const measurementStatus=!experimentOn?"Enable A/B testing to measure the actual impact of AdMorph against your standard product page.":
+   !baselineViews&&!personalizedViews?"No tracked traffic yet. Open your ad-matched product URL and verify the Shopify Web Pixel and analytics consent.":
+   !enoughData?"Collect more tracked visitors and checkouts on BOTH versions before interpreting performance.":
+   relativeUplift===null?"Not enough baseline checkouts to calculate uplift.":
+   relativeUplift>0?"AdMorph is showing a higher observed checkout-event rate. Keep testing before making a decision.":
+   relativeUplift<0?"The original page currently has a higher observed checkout-event rate. Consider revising the creative and continuing the test.":
+   "Both experiences currently show the same observed checkout-event rate.";
+
  function openCampaign(id:string){
    if(selectedId===id){setSelectedId(null);return;}
    setSelectedId(id);
@@ -447,6 +462,20 @@ export default function Campaigns(){
            </button>
          </Form>
        </div>}
+       {selected.status==="PUBLISHED"&&<section className="am-value-report" aria-label="Campaign conversion performance">
+         <div className="am-value-report-heading"><strong>Conversion impact · This Meta ad</strong><span>{experimentOn?"A/B measurement enabled":"Measurement not active"}</span></div>
+         <div className="am-value-metrics">
+           <div><small>Original Shopify</small><strong>{baselineViews?(100*baselineRate).toFixed(1)+"%":"—"}</strong><span>{baselineOrders} checkout events / {baselineViews} exposures</span></div>
+           <div><small>AdMorph personalized</small><strong>{personalizedViews?(100*personalizedRate).toFixed(1)+"%":"—"}</strong><span>{personalizedOrders} checkout events / {personalizedViews} exposures</span></div>
+           <div><small>Observed relative difference</small><strong>{enoughData&&relativeUplift!==null?(relativeUplift>0?"+":"")+relativeUplift.toFixed(1)+"%":"Insufficient data"}</strong><span>Indicative event ratio, not proven sales uplift</span></div>
+         </div>
+         <p className="am-value-advice">{measurementStatus}</p>
+         <p className="am-value-disclaimer">These are consented pixel EVENT counts, not unique customers, verified orders, revenue or statistical significance. Checkout events may include repeated events or attribution gaps.</p>
+         <Form method="post"><input type="hidden" name="intent" value="set_experiment"/><input type="hidden" name="id" value={selected.id}/>
+           <input type="hidden" name="enabled" value={experimentOn?"false":"true"}/>
+           <button className="ad-btn ghost" type="submit">{experimentOn?"Stop comparison":"Start measuring vs. original page (50/50)"}</button>
+         </Form>
+       </section>}
        <div className="am-simple-primary-actions">
          <Form method="post"><input type="hidden" name="intent" value="generate"/><input type="hidden" name="id" value={selected.id}/>
            <button className={selectedAI.success?"ad-btn ghost":"ad-btn"} type="submit">
@@ -512,8 +541,7 @@ export default function Campaigns(){
          <div className="am-simple-primary-actions">
           <Form method="post"><input type="hidden" name="intent" value="generate_visual"/><input type="hidden" name="id" value={selected.id}/>
            <button type="submit" className="ad-btn ghost">AI suggest a new design</button></Form>
-          <Form method="post"><input type="hidden" name="intent" value="generate_backdrop"/><input type="hidden" name="id" value={selected.id}/>
-           <button type="submit" className="ad-btn ghost" disabled={navigation.state!=="idle"}>{generatingVisual?"Generating scene…":"Generate new AI photoshoot variation"}</button></Form>
+
           <artwork.Form method="post"><input type="hidden" name="intent" value="preview_backdrop"/><input type="hidden" name="id" value={selected.id}/>
            <button type="submit" className="ad-btn ghost" disabled={artwork.state!=="idle"}>Refresh image preview</button></artwork.Form>
          </div>
@@ -526,8 +554,7 @@ export default function Campaigns(){
             <strong>Published campaign environment</strong>
            </div>}
          <div className="am-simple-primary-actions">
-          <Form method="post"><input type="hidden" name="intent" value="approve_backdrop"/><input type="hidden" name="id" value={selected.id}/>
-           <button type="submit" disabled={selected.status!=="PUBLISHED"} className="ad-btn">Approve AI image</button></Form>
+
           <Form method="post"><input type="hidden" name="intent" value="discard_backdrop"/><input type="hidden" name="id" value={selected.id}/>
            <button type="submit" className="ad-btn ghost">Discard draft image</button></Form>
           <Form method="post"><input type="hidden" name="intent" value="remove_live_backdrop"/><input type="hidden" name="id" value={selected.id}/>
