@@ -1,5 +1,5 @@
 import {Prisma} from "@prisma/client";
-import {useMemo,useState} from "react";
+import {useEffect,useMemo,useState} from "react";
 import type {ActionFunctionArgs,LoaderFunctionArgs} from "react-router";
 import {Form,Link,useActionData,useFetcher,useLoaderData,useNavigation} from "react-router";
 import prisma from "../db.server";
@@ -334,6 +334,15 @@ export default function Campaigns(){
  const linkedImage=productPreview.data&&"campaignId" in productPreview.data&&productPreview.data.campaignId===selectedId&&
    "productVisual" in productPreview.data?productPreview.data.productVisual?.url:undefined;
  const artworkData=artwork.data&&"campaignId" in artwork.data&&artwork.data.campaignId===selectedId?artwork.data:null;
+ useEffect(()=>{
+   if(feedback?.ok && "campaignId" in feedback && feedback.campaignId &&
+      feedback.campaignId===selectedId &&
+      (feedback.message.startsWith("AI reference-based") || feedback.message.startsWith("Published:"))){
+     artwork.submit({intent:"preview_backdrop",id:feedback.campaignId},{method:"post"});
+   }
+ // Refresh the image after generation or publishing; never keep a stale preview.
+ // eslint-disable-next-line react-hooks/exhaustive-deps
+ },[feedback,selectedId]);
  const report=selected?d.experimentResults[selected.id]:undefined;
  const selectedImageStatus=d.images.find(x=>x.campaignId===selectedId);
  const photoshootReady=Boolean(selectedImageStatus?.hasDraft||selectedImageStatus?.hasPublished);
@@ -430,7 +439,7 @@ export default function Campaigns(){
            <input type="hidden" name="intent" value="generate_backdrop"/>
            <input type="hidden" name="id" value={selected.id}/>
            <button type="submit" className="ad-btn" disabled={navigation.state!=="idle"}>
-             {generatingVisual?"Creating product photoshoot…":"Generate AI Product Photoshoot"}
+             {generatingVisual?"Creating product photoshoot…":"Generate new AI photoshoot variation"}
            </button>
          </Form>
        </div>}
@@ -500,7 +509,7 @@ export default function Campaigns(){
           <Form method="post"><input type="hidden" name="intent" value="generate_visual"/><input type="hidden" name="id" value={selected.id}/>
            <button type="submit" className="ad-btn ghost">AI suggest a new design</button></Form>
           <Form method="post"><input type="hidden" name="intent" value="generate_backdrop"/><input type="hidden" name="id" value={selected.id}/>
-           <button type="submit" className="ad-btn ghost" disabled={navigation.state!=="idle"}>{generatingVisual?"Generating scene…":"Generate WOW visual scene"}</button></Form>
+           <button type="submit" className="ad-btn ghost" disabled={navigation.state!=="idle"}>{generatingVisual?"Generating scene…":"Generate new AI photoshoot variation"}</button></Form>
           <artwork.Form method="post"><input type="hidden" name="intent" value="preview_backdrop"/><input type="hidden" name="id" value={selected.id}/>
            <button type="submit" className="ad-btn ghost" disabled={artwork.state!=="idle"}>Refresh image preview</button></artwork.Form>
          </div>
