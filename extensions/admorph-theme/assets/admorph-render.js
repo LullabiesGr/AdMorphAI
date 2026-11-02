@@ -293,6 +293,28 @@
         nativeIntro.insertBefore(nativeAngle,nativeIntro.firstChild);
         nativeSection.classList.add("admorph-native-product");
         nativeSection.setAttribute("data-admorph-ad",adId);
+        // Ad-matched editorial chapter following the native purchase experience.
+        // Uses only merchant-reviewed generated campaign copy and genuine Shopify images.
+        var priorChapter=document.querySelector(".admorph-story-chapter");
+        if(priorChapter)priorChapter.remove();
+        if(nativeSection.parentNode && typeof nativeSection.insertAdjacentElement==="function"){
+          var chapter=document.createElement("section");
+          chapter.className="admorph-story-chapter admorph-palette-"+palette;
+          chapter.appendChild(textNode("span","THE STORY / "+c.angle,"admorph-story-kicker"));
+          chapter.appendChild(textNode("h2",c.adConnection.title,"admorph-story-heading"));
+          chapter.appendChild(textNode("p",c.adConnection.text,"admorph-story-copy"));
+          if(photos.length>1){
+            var spread=document.createElement("div");
+            spread.className="admorph-story-spread";
+            photos.slice(0,3).forEach(function(photo){
+              var still=document.createElement("img");
+              still.src=photo.url;still.alt=photo.alt;still.loading="lazy";
+              spread.appendChild(still);
+            });
+            chapter.appendChild(spread);
+          }
+          nativeSection.insertAdjacentElement("afterend",chapter);
+        }
         root.replaceChildren();
         root.hidden=true;
         root.setAttribute("data-admorph-state","native");
