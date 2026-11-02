@@ -1,5 +1,5 @@
 import {Prisma} from "@prisma/client";
-import {useEffect,useMemo,useState} from "react";
+import {useEffect,useMemo,useRef,useState} from "react";
 import type {ActionFunctionArgs,LoaderFunctionArgs} from "react-router";
 import {Form,Link,useActionData,useFetcher,useLoaderData,useNavigation} from "react-router";
 import prisma from "../db.server";
@@ -334,10 +334,14 @@ export default function Campaigns(){
  const linkedImage=productPreview.data&&"campaignId" in productPreview.data&&productPreview.data.campaignId===selectedId&&
    "productVisual" in productPreview.data?productPreview.data.productVisual?.url:undefined;
  const artworkData=artwork.data&&"campaignId" in artwork.data&&artwork.data.campaignId===selectedId?artwork.data:null;
+ const lastAutoRefresh=useRef<string>("");
  useEffect(()=>{
+   const refreshKey=feedback?.ok && "campaignId" in feedback ? String(feedback.campaignId)+":"+feedback.message : "";
+   if(refreshKey && lastAutoRefresh.current===refreshKey)return;
    if(feedback?.ok && "campaignId" in feedback && feedback.campaignId &&
       feedback.campaignId===selectedId &&
       (feedback.message.startsWith("AI reference-based") || feedback.message.startsWith("Published:"))){
+     lastAutoRefresh.current=refreshKey;
      artwork.submit({intent:"preview_backdrop",id:feedback.campaignId},{method:"post"});
    }
  // Refresh the image after generation or publishing; never keep a stale preview.
